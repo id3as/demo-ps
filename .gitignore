@@ -1,0 +1,15 @@
+ebin
+.psc-package
+output
+compiled_ps
+_build
+tags
+nativedeps
+*.dump
+primary_
+rebar3.crashdump
+logs
+releases
+primary_*
+_checkouts
+default.etcd

@@ -1,0 +1,21 @@
+{application, demo,
+ [{description, "An OTP application"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, { demoApp@ps, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    lager,
+    gproc,
+    recon,
+    cowboy,
+    jsx,
+    eredis
+   ]},
+  {env,[]},
+  {modules, []},
+  {maintainers, []},
+  {licenses, []},
+  {links, []}
+ ]}.

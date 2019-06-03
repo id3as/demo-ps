@@ -1,0 +1,21 @@
+{
+    "set": "id3as-20190228",
+    "depends": [
+        "aff-coroutines",
+        "affjax",
+        "console",
+        "halogen",
+        "halogen-bootstrap4",
+        "routing",
+        "routing-duplex",
+        "js-timers",
+        "prelude",
+        "simple-json",
+        "web-socket",
+        "filterable",
+        "apigen",
+        "effect"
+    ],
+    "name": "client",
+    "source": "git@github.com:id3as/package-sets.git"
+}

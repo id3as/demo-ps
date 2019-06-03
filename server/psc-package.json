@@ -1,0 +1,24 @@
+{
+  "name": "demo",
+  "set": "id3as-20190521",
+  "source": "git@github.com:id3as/purerl-package-sets.git",
+  "depends": [
+    "console",
+    "erl-atom",
+    "erl-binary",
+    "erl-lists",
+    "erl-tuples",
+    "erl-maps",
+    "erl-cowboy",
+    "erl-process",
+    "erl-stetson",
+    "erl-pinto",
+    "erl-lager",
+    "datetime",
+    "simple-json",
+    "maybe",
+    "prelude",
+    "lists",
+    "transformers"
+  ]
+}

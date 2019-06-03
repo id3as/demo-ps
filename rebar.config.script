@@ -1,0 +1,24 @@
+{_, ErlOpts} = lists:keyfind(erl_opts, 1, CONFIG).
+
+Rel =
+  try erlang:system_info(otp_release) of
+      Vsn ->
+          {match,[Maj]} = re:run(Vsn, "^R?([0-9]+)", [{capture,[1],list}]),
+          Maj
+      catch _:_ ->
+          "OLD"
+  end,
+
+{ok, BuildLabel} = file:read_file("deployment/label"),
+
+NewErlOpts =
+  [ {d, 'VERSION_COMMIT', string:trim(os:cmd("git rev-parse --short HEAD"))}
+  , {d, 'VERSION_TAG', string:trim(os:cmd("git describe --tags HEAD"))}
+  , {d, 'VERSION', binary_to_list(string:trim(BuildLabel))}
+  , {d, list_to_atom("ERLANG_OTP_VERSION_"++Rel)}
+   | ErlOpts
+  ],
+
+lists:keystore(erl_opts, 1, CONFIG, {erl_opts, NewErlOpts}).
+
+
