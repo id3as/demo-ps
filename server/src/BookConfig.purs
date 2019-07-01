@@ -8,10 +8,11 @@ import Redis (ConnectionString(..))
 
 foreign import readString_ :: String -> Effect String
 foreign import readInt_ :: String -> Effect Int
+foreign import readDirect_ :: forall a. String -> Effect a
 
 connectionString :: Effect ConnectionString
 connectionString =
-  wrap <$> readString_ "connection_string" 
+  readDirect_ "connection_string" 
 
 webPort :: Effect Int
 webPort =

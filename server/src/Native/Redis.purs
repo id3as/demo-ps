@@ -13,9 +13,8 @@ import Simple.JSON (class ReadForeign, class WriteForeign, readJSON, writeJSON)
 newtype DbId = DbId String
 derive instance ntDbId :: Newtype DbId _
 
-newtype ConnectionString = ConnectionString String
-derive instance ntConnectionString :: Newtype ConnectionString _
 
+foreign import data ConnectionString :: Type
 foreign import data RedisConnection :: Type
 foreign import open :: ConnectionString -> Effect RedisConnection
 

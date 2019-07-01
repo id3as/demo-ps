@@ -2,10 +2,15 @@
 
 -export([
          readInt_/1,
-         readString_/1
+         readString_/1,
+         readDirect_/1
         ]).
 
 %% Case statements are just so we can take env vars as well as sys.config values
+readDirect_(Name) -> fun() ->
+                      get_config_value(binary_to_atom(Name, utf8))
+                     end.
+
 readInt_(Name) -> fun() ->
                       case get_config_value(binary_to_atom(Name, utf8)) of
                         List when is_list(List) -> list_to_integer(List);

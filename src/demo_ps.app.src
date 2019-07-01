@@ -2,7 +2,7 @@
  [{description, "An OTP application"},
   {vsn, "0.1.0"},
   {registered, []},
-  {mod, { demoApp@ps, []}},
+  {mod, { bookApp@ps, []}},
   {applications,
    [kernel,
     stdlib,

@@ -1,0 +1,17 @@
+#!/bin/bash
+function stop_containers {
+  docker stop demo_ps-redis || true
+  docker rm demo_ps-redis || true
+}
+
+stop_containers
+
+docker run --name demo_ps-redis --publish 6379:6379 -d redis
+
+erl -init_debug +sbwt none -pa _build/default/lib/*/ebin _checkouts/*/ebin -boot _build/default/rel/demo_ps/releases/1/demo_ps -config release-files/sys.config
+
+stop_containers
+
+
+
+

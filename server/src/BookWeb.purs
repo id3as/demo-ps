@@ -13,6 +13,7 @@ import Books (Book)
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Effect (Effect)
+import Effect.Console (log) as Debug
 import Erl.Atom (atom)
 import Erl.Cowboy.Req (ReadBodyResult(..), Req, binding, readBody, setBody)
 import Erl.Data.Binary (Binary)
@@ -42,8 +43,8 @@ init :: BookWebStartArgs -> Effect State
 init args = do
   Stetson.configure
     # Stetson.static "/assets/[...]" (PrivDir "demo-ps" "www/assets")
-    # Stetson.route "/ctl/api/data/books" books
-    # Stetson.route "/ctl/api/data/book/:isbn" book
+    # Stetson.route "/books" books
+    # Stetson.route "/books/:isbn" book
     # Stetson.static "/[...]" (PrivFile "demo-ps" "www/index.html")
     # Stetson.port args.webPort
     # Stetson.bindTo 0 0 0 0
@@ -60,9 +61,10 @@ books =
     # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" (\req state -> do
                                            body <- allBody req mempty
                                            result <- either (pure <<< Left <<< show) BookLibrary.create $ readJSON $ unsafeCoerce body
-                                           case result of
-                                             Left err -> Rest.result false (setBody err req) state
-                                             Right c -> Rest.result true req state
+                                           Rest.result true req state
+                                           --case result of
+                                           --  Left err -> Rest.result false (setBody err req) state
+                                           --  Right c -> Rest.result true req state
                                            )) : nil)
                                 req state)
     # Rest.yeeha
