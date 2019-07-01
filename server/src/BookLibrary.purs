@@ -15,7 +15,7 @@ import Erl.Data.Tuple (tuple2)
 import Pinto (ServerName(..), StartLinkResult)
 import Pinto.Gen (CallResult(..))
 import Pinto.Gen as Gen
-import Redis (ConnectionString(..), RedisConnection)
+import Redis (ConnectionString(..), DbId(..), RedisConnection)
 import Redis (put, open, get, findAll) as Redis
 
 -- Obviously this is optional, one could simply pass in "unit" if there were no args
@@ -26,6 +26,11 @@ type BookLibraryStartArgs = {
 type State = {
   connection :: RedisConnection
 }
+
+dbPrefix = "books:"
+
+dbId :: String -> DbId
+dbId isbn = wrap $ dbPrefix <> isbn
 
 -- We pass this into every interaction with Gen so we know what gen server we're talking about
 -- The type of "State" is encoded into it so all callbacks are strongly typed around that
@@ -39,19 +44,19 @@ serverName = ServerName "book_library"
 create :: Book -> Effect (Either String Book)
 create book = 
   Gen.doCall serverName \state@{ connection } -> do
-    Redis.put (wrap book.isbn) book connection
+    Redis.put (dbId book.isbn) book connection
     pure $ CallReply (Right book) state
 
 findByIsbn :: String -> Effect (Maybe Book)
 findByIsbn isbn = 
   Gen.doCall serverName \state@{ connection } -> do
-    result <- Redis.get (wrap isbn) connection
+    result <- Redis.get (dbId isbn) connection
     pure $ CallReply result state
 
 findAll :: Effect (List Book)
 findAll = 
   Gen.doCall serverName \state@{ connection } -> do
-    books <- Redis.findAll connection
+    books <- Redis.findAll dbPrefix connection
     pure $ CallReply books state
 
 -- Nothing special about this, just a function that returns a certain type

@@ -1,4 +1,4 @@
-{application, demo,
+{application, demo_ps,
  [{description, "An OTP application"},
   {vsn, "0.1.0"},
   {registered, []},
