@@ -93,3 +93,6 @@ parseList input =
   case readJSON input of
        Left err -> []
        Right result -> result
+
+type ValidationMap = Map.Map String String
+

@@ -25,7 +25,7 @@ type State = {
 }
 
 routeCodec :: RouteDuplex' Route
-routeCodec = root $ path "ctl" $ sum
+routeCodec = root $ sum
   { "Root" : noArgs
   , "BooksIndex": "books" / noArgs
   , "BooksNew": "books" / "new" / noArgs

@@ -42,10 +42,10 @@ startLink args =
 init :: BookWebStartArgs -> Effect State
 init args = do
   Stetson.configure
-    # Stetson.static "/assets/[...]" (PrivDir "demo-ps" "www/assets")
-    # Stetson.route "/books" books
-    # Stetson.route "/books/:isbn" book
-    # Stetson.static "/[...]" (PrivFile "demo-ps" "www/index.html")
+    # Stetson.route "/api/books" books
+    # Stetson.route "/api/books/:isbn" book
+    # Stetson.static "/assets/[...]" (PrivDir "demo_ps" "www/assets")
+    # Stetson.static "/[...]" (PrivFile "demo_ps" "www/index.html")
     # Stetson.port args.webPort
     # Stetson.bindTo 0 0 0 0
     # Stetson.startClear "http_listener"
@@ -61,10 +61,9 @@ books =
     # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" (\req state -> do
                                            body <- allBody req mempty
                                            result <- either (pure <<< Left <<< show) BookLibrary.create $ readJSON $ unsafeCoerce body
-                                           Rest.result true req state
-                                           --case result of
-                                           --  Left err -> Rest.result false (setBody err req) state
-                                           --  Right c -> Rest.result true req state
+                                           case result of
+                                             Left err -> Rest.result false (setBody err req) state
+                                             Right c -> Rest.result true req state
                                            )) : nil)
                                 req state)
     # Rest.yeeha

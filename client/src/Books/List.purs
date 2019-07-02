@@ -2,37 +2,17 @@ module BookClient.Books.List where
 
 import Prelude
 
-import Affjax as AX
-import Affjax.RequestBody (string) as AXRequest
-import Affjax.RequestHeader (RequestHeader(..))
-import Affjax.ResponseFormat as AXResponse
-import Affjax.StatusCode (StatusCode(..))
 import BookClient.Navigation (GlobalMessage(..), Route(..))
-import BookClient.Shared (StatusMessage(..), loadItem, loadList, onClick, renderMessage, validationFor, warningMessage)
-import Control.Apply (lift2)
-import Data.Array (elem, filter, foldl, head, (:))
-import Data.Bifunctor (bimap)
-import Data.Either (Either(..), either, hush)
-import Data.HTTP.Method (Method(..))
-import Data.Int (round, toNumber) as Int
-import Data.Map (Map) as Data
-import Data.Map (fromFoldable, isEmpty, unions) as Map
-import Data.Maybe (Maybe(..), fromMaybe')
-import Data.MediaType (MediaType(..))
-import Data.Newtype (unwrap, wrap)
-import Data.Tuple (Tuple(..))
+import BookClient.Shared (StatusMessage(..), loadList, onClick)
+import Books (Book)
+import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
+import Halogen (liftAff)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties (IProp)
 import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap4 as B
-import Books (Book)
-import Simple.JSON (class ReadForeign, readJSON, writeJSON)
 import Web.Event.Event (Event, preventDefault)
-import Web.UIEvent.MouseEvent (MouseEvent)
-import Web.UIEvent.MouseEvent (toEvent) as MouseEvent
 
 
 data Query a
@@ -40,12 +20,15 @@ data Query a
 data Action = Load 
   | Tick
   | EditBook Event Book 
-  | AddBook Event Book
+  | AddBook Event 
   | DeleteBook Event Book
 
 type Slot = H.Slot Query GlobalMessage
 
 type Model = { message :: StatusMessage, books :: Array Book }
+
+type ActionHandler = H.HalogenM Model Action () GlobalMessage Aff Unit
+type RenderHandler = H.ComponentHTML Action () Aff
 
 type BooksInput = Unit
 
@@ -64,15 +47,38 @@ component =
   initialState :: BooksInput -> Model
   initialState _ = { message: NoMessage, books: [] }
 
-  render :: Model -> H.ComponentHTML Action () Aff
-  render _ = HH.div_ []
+  render :: Model -> RenderHandler
+  render model = 
+    HH.div [] [ HH.button [ HP.title "Add Book"
+                          , HP.classes [ B.mb3 ]
+                          , onClick AddBook
+                          ] [ HH.text "Add Book" ]
+              , HH.h5 [] [ HH.text "Library" ]
+              , bookList model.books 
+              ]
 
-  handleAction :: Action -> H.HalogenM Model Action () GlobalMessage Aff Unit
+  handleAction :: Action -> ActionHandler
   handleAction action =  do
      case action of
-          Load -> pure unit
-          Tick -> pure unit 
-          EditBook ev book  -> pure unit
-          AddBook ev book -> pure unit
-          DeleteBook ev book -> pure unit
+       Load -> 
+         loadBooksIntoState
+       Tick -> pure unit 
+       EditBook ev book  -> pure unit
+       AddBook ev -> do
+         H.liftEffect $ preventDefault ev 
+         H.raise $ NavigateToRoute BooksNew
+       DeleteBook ev book -> pure unit
 
+loadBooksIntoState :: ActionHandler
+loadBooksIntoState = do
+  books <- liftAff $ loadList "/api/books"
+  H.put { message: NoMessage, books }
+
+bookList :: Array Book -> RenderHandler
+bookList books = HH.ul [] $
+  map (\book -> HH.li [] [ HH.text book.title ]
+
+      ) books
+  
+
+    
