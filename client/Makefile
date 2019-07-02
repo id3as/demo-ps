@@ -6,7 +6,7 @@ OUTPUT = output
 all: bundle.js
 
 bundle.js: output
-	purs bundle 'output/**/*.js' -o bundle.js -m 'Demo.Client' --main 'Demo.Client'
+	purs bundle 'output/**/*.js' -o bundle.js -m 'BookClient.Client' --main 'BookClient.Client'
 	cp bundle.js ../priv/www/assets/
 
 #$(PS_SRC)/**/*.purs 
