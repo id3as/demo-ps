@@ -13,7 +13,6 @@ import Books (Book)
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Effect (Effect)
-import Effect.Console (log) as Debug
 import Erl.Atom (atom)
 import Erl.Cowboy.Req (ReadBodyResult(..), Req, binding, readBody, setBody)
 import Erl.Data.Binary (Binary)
@@ -74,8 +73,14 @@ book =
                           let id = binding (atom "isbn") req
                           book <- maybe (pure Nothing) BookLibrary.findByIsbn id
                           Rest.initResult req book)
-    # Rest.allowedMethods (\req state -> Rest.result (Stetson.HEAD : Stetson.PUT : Stetson.GET : Stetson.OPTIONS : nil) req state)
-    # Rest.resourceExists (\req state -> Rest.result (isJust state) req state)
+    # Rest.allowedMethods (\req state -> Rest.result (Stetson.HEAD : Stetson.PUT : Stetson.DELETE : Stetson.GET : Stetson.OPTIONS : nil) req state)
+    # Rest.resourceExists (\req state -> 
+                             Rest.result (isJust state) 
+                             (maybe (setBody "This book does not exist" req) (\_ -> req) state)
+                             state)
+    # Rest.deleteResource (\req state -> do
+                              _ <- maybe (pure unit) (\book -> BookLibrary.delete book.isbn) state
+                              Rest.result true req state)
     # Rest.contentTypesProvided (\req state -> Rest.result (jsonWriter : nil) req state)
     # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" (\req state -> do
                                            body <- allBody req mempty

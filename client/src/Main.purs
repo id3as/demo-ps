@@ -4,9 +4,9 @@ import Prelude
 
 import BookClient.Books.Create as BookCreate
 import BookClient.Books.Delete as BookDelete
-import BookClient.Books.Edit (EditBookInput(..))
 import BookClient.Books.Edit as BookEdit
 import BookClient.Books.List as BookList
+import BookClient.Books.Shared (BookInput(..))
 import BookClient.Navigation (GlobalMessage(..), Route(..), breadcrumbs, routeCodec)
 import Data.Array ((:))
 import Data.Maybe (Maybe(..))
@@ -103,7 +103,7 @@ component =
                  Root -> HH.slot _bookList unit BookList.component unit (Just <<< RaiseGlobal)
                  BooksIndex -> HH.slot _bookList unit BookList.component unit (Just <<< RaiseGlobal)
                  BooksNew -> HH.slot _bookCreate unit BookCreate.component unit (Just <<< RaiseGlobal)
-                 BooksDelete id -> HH.slot _bookDelete unit BookDelete.component unit (Just <<< RaiseGlobal) -- id
+                 BooksDelete id -> HH.slot _bookDelete unit BookDelete.component (Isbn id) (Just <<< RaiseGlobal) -- id
                  BooksEdit id -> HH.slot _bookEdit unit BookEdit.component (Isbn id) (Just <<< RaiseGlobal) 
                ]
           ]
@@ -139,7 +139,6 @@ routeSignal nav driver = H.liftEffect do
   nav # matchesWith (parse routeCodec) routeChanged
   where
     routeChanged _ newRoute = do
-      _ <- H.liftEffect $ log $ "New route.." <> (print routeCodec newRoute)
       void $ launchAff $ driver.query <<< H.tell <<< Global <<< NavigateToRoute $ newRoute
 
 navLinkClass :: Route -> Route -> Array H.ClassName

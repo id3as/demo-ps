@@ -3,20 +3,16 @@ module BookLibrary where
 import Prelude
 
 import Books (Book)
-import Data.Array (elem)
-import Data.Either (Either(..), hush)
-import Data.Filterable (partition)
-import Data.Maybe (Maybe(..), fromJust)
-import Data.Newtype (unwrap, wrap)
-import Data.Traversable (any, sequence)
+import Data.Either (Either(..))
+import Data.Maybe (Maybe(..))
+import Data.Newtype (wrap)
 import Effect (Effect)
-import Erl.Data.List (List, filter, mapMaybe, nil, (:))
-import Erl.Data.Tuple (tuple2)
+import Erl.Data.List (List)
 import Pinto (ServerName(..), StartLinkResult)
 import Pinto.Gen (CallResult(..))
 import Pinto.Gen as Gen
-import Redis (ConnectionString(..), DbId(..), RedisConnection)
-import Redis (put, open, get, findAll) as Redis
+import Redis (ConnectionString, DbId, RedisConnection)
+import Redis as Redis
 
 -- Obviously this is optional, one could simply pass in "unit" if there were no args
 type BookLibraryStartArgs = {
@@ -27,6 +23,7 @@ type State = {
   connection :: RedisConnection
 }
 
+dbPrefix :: String
 dbPrefix = "books:"
 
 dbId :: String -> DbId
@@ -44,14 +41,26 @@ serverName = ServerName "book_library"
 create :: Book -> Effect (Either String Book)
 create book = 
   Gen.doCall serverName \state@{ connection } -> do
-    Redis.put (dbId book.isbn) book connection
-    pure $ CallReply (Right book) state
+    existing <- Redis.get (dbId book.isbn) connection
+    case existing of
+         Nothing -> do
+           Redis.put (dbId book.isbn) book connection
+           pure $ CallReply (Right book) state
+         Just (gasp :: Book) -> 
+           pure $ CallReply (Left "Book with this ISBN already exists") state
+
 
 update :: Book -> Effect (Either String Book)
 update book = 
   Gen.doCall serverName \state@{ connection } -> do
     Redis.put (dbId book.isbn) book connection
     pure $ CallReply (Right book) state
+
+delete :: String -> Effect Unit
+delete isbn = 
+  Gen.doCall serverName \state@{ connection } -> do
+    Redis.delete (dbId isbn) connection
+    pure $ CallReply unit state
 
 findByIsbn :: String -> Effect (Maybe Book)
 findByIsbn isbn = 

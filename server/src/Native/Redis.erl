@@ -4,11 +4,13 @@
 -define(GET(Key), [ <<"GET">>, Key ]).
 -define(KEYS(Match), [ <<"KEYS">>, Match ]).
 -define(MGET(Keys), [ <<"MGET">> | Keys ]).
+-define(DEL(Key), [ <<"DEL">> | if is_list(Key) -> Key; true -> [ Key ] end ]).
 
 -export([open/1,
          put_/3,
          get_/4,
-         readKeyPrefix_/2
+         readKeyPrefix_/2,
+         delete/2
         ]).
 
 open(ConnectionString) ->
@@ -20,6 +22,12 @@ open(ConnectionString) ->
 put_(Id, Data, Pid) ->
   fun() ->
       { ok, <<"OK">>} = eredis:q(Pid, ?SET(Id, Data)),
+      ok
+  end.
+
+delete(Id, Pid) ->
+  fun() ->
+      { ok, _Count } = eredis:q(Pid, ?DEL(Id)),
       ok
   end.
 

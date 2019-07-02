@@ -18,6 +18,7 @@ foreign import data ConnectionString :: Type
 foreign import data RedisConnection :: Type
 foreign import open :: ConnectionString -> Effect RedisConnection
 
+foreign import delete :: DbId -> RedisConnection -> Effect Unit
 foreign import put_ :: DbId -> String -> RedisConnection -> Effect Unit
 foreign import get_ :: DbId -> RedisConnection -> (Maybe String) -> (String -> Maybe String) -> Effect (Maybe String)
 foreign import readKeyPrefix_ :: String -> RedisConnection -> Effect (List String)

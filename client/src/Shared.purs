@@ -95,4 +95,3 @@ parseList input =
        Right result -> result
 
 type ValidationMap = Map.Map String String
-

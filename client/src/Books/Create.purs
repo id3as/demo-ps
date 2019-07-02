@@ -23,7 +23,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap4 as B
 import Simple.JSON (writeJSON)
-import Web.Event.Event (Event)
+import Web.Event.Event (Event, preventDefault)
 import Web.UIEvent.MouseEvent (toEvent) as MouseEvent
 
 data Query a
@@ -90,8 +90,11 @@ component =
           IsbnChanged value -> updateBook (\b -> b { isbn = value })
           TitleChanged value -> updateBook (\b -> b { title = value })
           AuthorChanged value -> updateBook (\b -> b { author = value })
-          SaveNewBook ev -> maybeSaveBook
-          BackToListView ev -> 
+          SaveNewBook ev -> do
+            H.liftEffect $ preventDefault ev 
+            maybeSaveBook
+          BackToListView ev -> do 
+            H.liftEffect $ preventDefault ev 
             H.raise $ NavigateToRoute BooksIndex
 
 updateBook :: (Book -> Book) -> ActionHandler
