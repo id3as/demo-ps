@@ -74,9 +74,17 @@ book =
                           let id = binding (atom "isbn") req
                           book <- maybe (pure Nothing) BookLibrary.findByIsbn id
                           Rest.initResult req book)
-    # Rest.allowedMethods (\req state -> Rest.result (Stetson.HEAD : Stetson.GET : Stetson.OPTIONS : nil) req state)
+    # Rest.allowedMethods (\req state -> Rest.result (Stetson.HEAD : Stetson.PUT : Stetson.GET : Stetson.OPTIONS : nil) req state)
     # Rest.resourceExists (\req state -> Rest.result (isJust state) req state)
     # Rest.contentTypesProvided (\req state -> Rest.result (jsonWriter : nil) req state)
+    # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" (\req state -> do
+                                           body <- allBody req mempty
+                                           result <- either (pure <<< Left <<< show) BookLibrary.update $ readJSON $ unsafeCoerce body
+                                           case result of
+                                             Left err -> Rest.result false (setBody err req) state
+                                             Right c -> Rest.result true req state
+                                           )) : nil)
+                                req state)
     # Rest.yeeha
 
 jsonWriter :: forall a. WriteForeign a => Tuple2 String (Req -> a -> (Effect (RestResult String a)))

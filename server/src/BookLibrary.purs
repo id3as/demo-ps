@@ -47,6 +47,12 @@ create book =
     Redis.put (dbId book.isbn) book connection
     pure $ CallReply (Right book) state
 
+update :: Book -> Effect (Either String Book)
+update book = 
+  Gen.doCall serverName \state@{ connection } -> do
+    Redis.put (dbId book.isbn) book connection
+    pure $ CallReply (Right book) state
+
 findByIsbn :: String -> Effect (Maybe Book)
 findByIsbn isbn = 
   Gen.doCall serverName \state@{ connection } -> do

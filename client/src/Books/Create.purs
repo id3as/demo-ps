@@ -9,30 +9,21 @@ import Affjax.ResponseFormat as AXResponse
 import Affjax.StatusCode (StatusCode(..))
 import BookClient.Books.Shared (validateBook)
 import BookClient.Navigation (GlobalMessage(..), Route(..))
-import BookClient.Shared (StatusMessage(..), ValidationMap, loadItem, loadList, onClick, renderMessage, validationFor, warningMessage)
+import BookClient.Shared (StatusMessage(..), ValidationMap, renderMessage, validationFor, warningMessage)
 import Books (Book)
-import Control.Apply (lift2)
-import Data.Array (elem, filter, foldl, head, (:))
-import Data.Bifunctor (bimap)
-import Data.Either (Either(..), either, hush)
+import Data.Either (Either(..), either)
 import Data.HTTP.Method (Method(..))
-import Data.Int (round, toNumber) as Int
-import Data.Map (Map) as Data
-import Data.Map (fromFoldable, isEmpty, unions) as Map
-import Data.Maybe (Maybe(..), fromMaybe')
+import Data.Map (isEmpty) as Map
+import Data.Maybe (Maybe(..))
 import Data.MediaType (MediaType(..))
-import Data.Newtype (unwrap, wrap)
-import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
-import Halogen.HTML.Properties (IProp)
 import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap4 as B
-import Simple.JSON (class ReadForeign, readJSON, writeJSON)
-import Web.Event.Event (Event, preventDefault)
-import Web.UIEvent.MouseEvent (MouseEvent)
+import Simple.JSON (writeJSON)
+import Web.Event.Event (Event)
 import Web.UIEvent.MouseEvent (toEvent) as MouseEvent
 
 data Query a
@@ -100,7 +91,8 @@ component =
           TitleChanged value -> updateBook (\b -> b { title = value })
           AuthorChanged value -> updateBook (\b -> b { author = value })
           SaveNewBook ev -> maybeSaveBook
-          BackToListView ev -> pure unit
+          BackToListView ev -> 
+            H.raise $ NavigateToRoute BooksIndex
 
 updateBook :: (Book -> Book) -> ActionHandler
 updateBook fn = do
@@ -130,4 +122,3 @@ saveBook = do
        H.raise $ NavigateToRoute BooksIndex
     _ ->  
       H.put $ state { posting = false, message = warningMessage $ either (\_ -> "Unknown Error") identity response.body  }
-

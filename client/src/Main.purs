@@ -2,11 +2,11 @@ module BookClient.Main where
 
 import Prelude
 
-import BookClient.Books.List as BookList
 import BookClient.Books.Create as BookCreate
-import BookClient.Books.Edit as BookEdit
 import BookClient.Books.Delete as BookDelete
-
+import BookClient.Books.Edit (EditBookInput(..))
+import BookClient.Books.Edit as BookEdit
+import BookClient.Books.List as BookList
 import BookClient.Navigation (GlobalMessage(..), Route(..), breadcrumbs, routeCodec)
 import Data.Array ((:))
 import Data.Maybe (Maybe(..))
@@ -104,7 +104,7 @@ component =
                  BooksIndex -> HH.slot _bookList unit BookList.component unit (Just <<< RaiseGlobal)
                  BooksNew -> HH.slot _bookCreate unit BookCreate.component unit (Just <<< RaiseGlobal)
                  BooksDelete id -> HH.slot _bookDelete unit BookDelete.component unit (Just <<< RaiseGlobal) -- id
-                 BooksEdit id -> HH.slot _bookEdit unit BookEdit.component unit (Just <<< RaiseGlobal) -- id
+                 BooksEdit id -> HH.slot _bookEdit unit BookEdit.component (Isbn id) (Just <<< RaiseGlobal) 
                ]
           ]
         ]

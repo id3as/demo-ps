@@ -19,9 +19,9 @@ data Query a
 
 data Action = Load 
   | Tick
-  | EditBook Event Book 
+  | EditBook Book Event
   | AddBook Event 
-  | DeleteBook Event Book
+  | DeleteBook Book Event
 
 type Slot = H.Slot Query GlobalMessage
 
@@ -63,11 +63,15 @@ component =
        Load -> 
          loadBooksIntoState
        Tick -> pure unit 
-       EditBook ev book  -> pure unit
+       EditBook book ev -> do
+         H.liftEffect $ preventDefault ev 
+         H.raise $ NavigateToRoute $ BooksEdit book.isbn
        AddBook ev -> do
          H.liftEffect $ preventDefault ev 
          H.raise $ NavigateToRoute BooksNew
-       DeleteBook ev book -> pure unit
+       DeleteBook book ev -> do
+         H.liftEffect $ preventDefault ev 
+         H.raise $ NavigateToRoute $ BooksDelete book.isbn
 
 loadBooksIntoState :: ActionHandler
 loadBooksIntoState = do
@@ -76,8 +80,10 @@ loadBooksIntoState = do
 
 bookList :: Array Book -> RenderHandler
 bookList books = HH.ul [] $
-  map (\book -> HH.li [] [ HH.text book.title ]
-
+  map (\book -> HH.li [] [ HH.text book.title
+                         , HH.a [ HP.href "#", onClick $ EditBook book ] [ HH.text " Edit" ]
+                         , HH.a [ HP.href "#", onClick $ DeleteBook book ] [ HH.text " Delete" ]
+                         ]
       ) books
   
 
