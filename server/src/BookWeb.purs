@@ -57,16 +57,16 @@ books =
                         Rest.initResult req state)
     # Rest.allowedMethods (\req state -> Rest.result (Stetson.POST :  Stetson.HEAD : Stetson.GET : Stetson.OPTIONS : nil) req state)
     # Rest.contentTypesProvided (\req state -> Rest.result (jsonWriter : nil) req state)
-    # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" (\req state -> do
-                                           body <- allBody req mempty
-                                           result <- either (pure <<< Left <<< show) BookLibrary.create $ readJSON $ unsafeCoerce body
-                                           case result of
-                                             Left err -> Rest.result false (setBody err req) state
-                                             Right c -> Rest.result true req state
-                                           )) : nil)
+    # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" acceptJson) : nil)
                                 req state)
     # Rest.yeeha
-
+    where acceptJson = \req state -> do
+            body <- allBody req mempty
+            result <- either (pure <<< Left <<< show) BookLibrary.create $ readJSON $ unsafeCoerce body
+            case result of
+                 Left err -> Rest.result false (setBody err req) state
+                 Right c -> Rest.result true req state
+                                           
 book :: StetsonHandler (Maybe Book)
 book = 
   Rest.handler (\req -> do
@@ -82,15 +82,16 @@ book =
                               _ <- maybe (pure unit) (\book -> BookLibrary.delete book.isbn) state
                               Rest.result true req state)
     # Rest.contentTypesProvided (\req state -> Rest.result (jsonWriter : nil) req state)
-    # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" (\req state -> do
-                                           body <- allBody req mempty
-                                           result <- either (pure <<< Left <<< show) BookLibrary.update $ readJSON $ unsafeCoerce body
-                                           case result of
-                                             Left err -> Rest.result false (setBody err req) state
-                                             Right c -> Rest.result true req state
-                                           )) : nil)
-                                req state)
+    # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" acceptJson) : nil) req state)
     # Rest.yeeha
+    where
+          acceptJson = \req state -> do
+             body <- allBody req mempty
+             result <- either (pure <<< Left <<< show) BookLibrary.update $ readJSON $ unsafeCoerce body
+             case result of
+                  Left err -> Rest.result false (setBody err req) state
+                  Right c -> Rest.result true req state
+
 
 jsonWriter :: forall a. WriteForeign a => Tuple2 String (Req -> a -> (Effect (RestResult String a)))
 jsonWriter = tuple2 "application/json" (\req state -> Rest.result (writeJSON state) req state)
