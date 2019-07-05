@@ -60,7 +60,8 @@ books =
     # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" acceptJson) : nil)
                                 req state)
     # Rest.yeeha
-    where acceptJson = \req state -> do
+    where 
+          acceptJson req state = do
             body <- allBody req mempty
             result <- either (pure <<< Left <<< show) BookLibrary.create $ readJSON $ unsafeCoerce body
             case result of
@@ -85,7 +86,7 @@ book =
     # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" acceptJson) : nil) req state)
     # Rest.yeeha
     where
-          acceptJson = \req state -> do
+          acceptJson req state = do
              body <- allBody req mempty
              result <- either (pure <<< Left <<< show) BookLibrary.update $ readJSON $ unsafeCoerce body
              case result of
