@@ -23,12 +23,12 @@ init = do
                 -- These are typed along with their start args, so nice
                 -- They pretty much pair up exactly with the OTP docs
                 # supervisorChildren ( ( buildChild
-                                       # childType GenServer
+                                       # childType Worker
                                        # childId "book_web"
                                        # childStart BookWeb.startLink  { webPort } )
                                        : 
                                        ( buildChild
-                                       # childType GenServer
+                                       # childType Worker
                                        # childId "book_library"
                                        # childStart BookLibrary.startLink { connectionString } )
                                         : nil)
