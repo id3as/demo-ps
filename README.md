@@ -22,5 +22,7 @@ rebar3 compile
 
 Open a browser to http://localhost:3000, enjoy the contrived example
 
+Disclaimer
+==
 
-
+This software, and the opinionated libraries written to support it are very much "works in progress" - we are actively using and building these libraries out for use in own commercial software and can and will be making any changes required to further support that development. As such, they come without support and a disclaimer very much of "be it on your own heads". That said - feel free to reach out and talk to us if you have ideas though, improvements and suggestions are welcome in pull requests and conversation.
