@@ -1,6 +1,6 @@
 {
   "name": "demo",
-  "set": "erl-0.12.3-20190708",
+  "set": "erl-0.13.2-20190808",
   "source": "git@github.com:purerl/package-sets.git",
   "depends": [
     "console",

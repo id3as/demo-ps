@@ -1,5 +1,5 @@
 {
-    "set": "id3as-20190228",
+    "set": "psc-0.13.3-20190831",
     "depends": [
         "aff-coroutines",
         "affjax",
@@ -13,9 +13,8 @@
         "simple-json",
         "web-socket",
         "filterable",
-        "apigen",
         "effect"
     ],
     "name": "client",
-    "source": "git@github.com:id3as/package-sets.git"
+    "source": "git@github.com:purescript/package-sets.git"
 }
