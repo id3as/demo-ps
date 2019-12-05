@@ -132,10 +132,10 @@ saveBook = do
                , content = Just $ AXRequest.string $ writeJSON book
                , responseFormat = AXResponse.string  
                })
-  case response.status of
-    StatusCode 204 -> do
+  case response of
+    Right { status: StatusCode 204 } -> do
       H.put $ state { posting = false, message = successMessage "Book updated successfully" }
-    StatusCode 201 -> do
+    Right { status: StatusCode 201 } -> do
       H.put $ state { posting = false, message = successMessage "Book created successfully" } -- Yikes
     _ ->  
-      H.put $ state { posting = false, message = warningMessage $ either (\_ -> "Unknown Error") identity response.body  }
+      H.put $ state { posting = false, message = warningMessage $ either (\_ -> "Unknown Error") _.body response  }

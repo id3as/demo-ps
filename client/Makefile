@@ -19,6 +19,10 @@ output: $(PS_SRC)/*.purs $(PS_SRC)/**/*.purs .psc-package
 	psc-package install
 	touch .psc-package
 
+ide: $(PS_SRC)/*.purs $(PS_SRC)/**/*.purs .psc-package
+	psc-package sources | xargs purs compile --codegen js  '$(PS_SRC)/**/*.purs' --json-errors
+	touch output
+
 clean:
 	rm -rf $(OUTPUT)/*
 

@@ -8,7 +8,6 @@ import Control.Coroutine as CR
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Aff (forkAff)
-import Effect.Console (log)
 import Halogen (liftEffect)
 import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)

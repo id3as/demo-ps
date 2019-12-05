@@ -108,8 +108,8 @@ deleteBook = do
                , headers = [ ContentType $ MediaType "application/json" ]
                , responseFormat = AXResponse.string  
                })
-  case response.status of
-    StatusCode 204 -> do
+  case response of
+    Right { status: StatusCode 204 } -> do
      H.raise $ NavigateToRoute BooksIndex
     _ ->  
-      H.put $ state { posting = false, message = warningMessage $ either (\_ -> "Unknown Error") identity response.body  }
+      H.put $ state { posting = false, message = warningMessage $ either (\_ -> "Unknown Error") _.body response  }
