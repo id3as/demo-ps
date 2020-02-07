@@ -10,7 +10,8 @@ import Affjax.StatusCode (StatusCode(..))
 import BookClient.Books.Shared (BookInput, validateBook)
 import BookClient.Navigation (GlobalMessage(..), Route(..))
 import BookClient.Shared (StatusMessage(..), ValidationMap, loadItem, renderMessage, successMessage, validationFor, warningMessage)
-import Books (Book)
+import Books (Book, apiRouteCodec)
+import Books as ApiRoute
 import Data.Either (Either(..), either)
 import Data.HTTP.Method (Method(..))
 import Data.Map (isEmpty) as Map
@@ -23,6 +24,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap4 as B
+import Routing.Duplex (print)
 import Simple.JSON (writeJSON)
 import Web.Event.Event (Event, preventDefault)
 import Web.UIEvent.MouseEvent (toEvent) as MouseEvent
@@ -126,7 +128,7 @@ saveBook = do
   state@{ book } <- H.get
   _ <- H.put state { posting = true }
   response <- H.liftAff $ AX.request $ (AX.defaultRequest 
-               { url = "/api/books/" <>  book.isbn
+               { url =  print apiRouteCodec (ApiRoute.Book book.isbn)
                , method = Left PUT
                , headers = [ ContentType $ MediaType "application/json" ]
                , content = Just $ AXRequest.string $ writeJSON book

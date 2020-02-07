@@ -121,8 +121,30 @@ let additions =
 let upstream =
       https://raw.githubusercontent.com/purerl/package-sets/erl-0.13.5-20191205/src/packages.dhall sha256:8126c7f038442ff618e12639e26da678381ac75de0dee8d03f9b43d67548e6a0
 
-let overrides = {=}
+let overrides = { erl-stetson =
+      upstream.erl-stetson // { version = "duplex-routing", dependencies = [ "erl-cowboy", "erl-lager", "routing-duplex" ] },
+      erl-cowboy = upstream.erl-cowboy // { version = "03eaeab111dd1b2cf499ca977fe4cc61df8fd254" },
+      strings = upstream.strings // { version = "v4.0.1-erl1" }
+    }
 
-let additions = {=}
+let additions = {
+  routing-duplex =
+    { dependencies =
+        [ "arrays"
+        , "control"
+        , "either"
+        , "generics-rep"
+        , "globals"
+        , "lazy"
+        , "prelude"
+        , "profunctor"
+        , "record"
+        , "strings"
+        , "typelevel-prelude"
+        ]
+    , repo = "https://github.com/natefaubion/purescript-routing-duplex.git"
+    , version = "v0.4.1"
+    }
+}
 
 in  upstream // overrides // additions

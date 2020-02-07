@@ -9,12 +9,11 @@ module BookWeb
 import Prelude
 
 import BookLibrary as BookLibrary
-import Books (Book)
+import Books (Book, apiRouteCodec)
 import Data.Either (Either(..), either)
-import Data.Maybe (Maybe(..), isJust, maybe)
+import Data.Maybe (Maybe, isJust, maybe)
 import Effect (Effect)
-import Erl.Atom (atom)
-import Erl.Cowboy.Req (ReadBodyResult(..), Req, binding, readBody, setBody)
+import Erl.Cowboy.Req (ReadBodyResult(..), Req, readBody, setBody)
 import Erl.Data.Binary (Binary)
 import Erl.Data.Binary.IOData (IOData, fromBinary, toBinary)
 import Erl.Data.List (List, nil, (:))
@@ -38,13 +37,16 @@ startLink :: BookWebStartArgs -> Effect StartLinkResult
 startLink args =
   Gen.startLink serverName $ init args
 
+
 init :: BookWebStartArgs -> Effect State
 init args = do
   Stetson.configure
-    # Stetson.route "/api/books" books
-    # Stetson.route "/api/books/:isbn" book
-    # Stetson.static "/assets/[...]" (PrivDir "demo_ps" "www/assets")
-    # Stetson.static "/[...]" (PrivFile "demo_ps" "www/index.html")
+    # Stetson.routes apiRouteCodec
+      { "Book": book
+      , "BooksIndex": books
+      , "Assets": PrivDir "demo_ps" "www/assets"
+      , "ClientRoute": PrivFile "demo_ps" "www/index.html"
+      }
     # Stetson.port args.webPort
     # Stetson.bindTo 0 0 0 0
     # Stetson.startClear "http_listener"
@@ -68,11 +70,10 @@ books =
                  Left err -> Rest.result false (setBody err req) state
                  Right c -> Rest.result true req state
                                            
-book :: StetsonHandler (Maybe Book)
-book = 
+book :: String -> StetsonHandler (Maybe Book)
+book isbn = 
   Rest.handler (\req -> do
-                          let id = binding (atom "isbn") req
-                          book <- maybe (pure Nothing) BookLibrary.findByIsbn id
+                          book <- BookLibrary.findByIsbn isbn
                           Rest.initResult req book)
     # Rest.allowedMethods (\req state -> Rest.result (Stetson.HEAD : Stetson.PUT : Stetson.DELETE : Stetson.GET : Stetson.OPTIONS : nil) req state)
     # Rest.resourceExists (\req state -> 

@@ -4,7 +4,8 @@ import Prelude
 
 import BookClient.Navigation (GlobalMessage(..), Route(..))
 import BookClient.Shared (StatusMessage(..), loadList, onClick)
-import Books (Book)
+import Books (Book, apiRouteCodec)
+import Books as ApiRoute
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Halogen (liftAff)
@@ -12,6 +13,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap4 as B
+import Routing.Duplex (print)
 import Web.Event.Event (Event, preventDefault)
 
 
@@ -75,7 +77,7 @@ component =
 
 loadBooksIntoState :: ActionHandler
 loadBooksIntoState = do
-  books <- liftAff $ loadList "/api/books"
+  books <- liftAff $ loadList $ print apiRouteCodec ApiRoute.BooksIndex
   H.put { message: NoMessage, books }
 
 bookList :: Array Book -> RenderHandler
