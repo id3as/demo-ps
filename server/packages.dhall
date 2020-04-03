@@ -119,7 +119,7 @@ let additions =
 
 
 let upstream =
-      https://raw.githubusercontent.com/purerl/package-sets/erl-0.13.5-20191205/src/packages.dhall sha256:8126c7f038442ff618e12639e26da678381ac75de0dee8d03f9b43d67548e6a0
+      https://github.com/purerl/package-sets/releases/download/erl-0.13.5-20191213/packages.dhall sha256:73638b403bffb6070be6ce226649111f0bcef8be5ed360f064219baf41e0429a
 
 let overrides = {=}
 
