@@ -77,16 +77,16 @@ noneSelected = HH.option [ HP.value "" ] [ HH.text "None Selected" ]
 loadItem :: forall a. ReadForeign a => String -> Aff (Either String a)
 loadItem uri = do
   response <- AX.get AXResponse.string uri
-  case response.body of
+  case response of
      Left err -> pure $ Left "No"
-     Right json -> pure $ bimap show identity $ readJSON json
+     Right { body: json } -> pure $ bimap show identity $ readJSON json
 
 loadList :: forall a. ReadForeign a => String -> Aff (Array a)
 loadList uri = do
   response <- AX.get AXResponse.string uri
-  pure $ case response.body of
+  pure $ case response of
               Left err -> []
-              Right json -> parseList json
+              Right { body: json } -> parseList json
 
 parseList :: forall a. ReadForeign a => String -> Array a
 parseList input =  
