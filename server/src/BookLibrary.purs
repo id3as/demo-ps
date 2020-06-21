@@ -2,11 +2,11 @@ module BookLibrary where
 
 import Prelude
 
-import Books (Book)
+import Books (Book,  Isbn)
 import Erl.Atom (atom)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
-import Data.Newtype (wrap)
+import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
 import Erl.Data.List (List)
 import Pinto (ServerName(..), StartLinkResult)
@@ -14,6 +14,8 @@ import Pinto.Gen (CallResult(..))
 import Pinto.Gen as Gen
 import Redis (ConnectionString, DbId, RedisConnection)
 import Redis as Redis
+import SimpleBus (Bus, bus, raise) as SimpleBus
+
 
 -- Obviously this is optional, one could simply pass in "unit" if there were no args
 type BookLibraryStartArgs = {
@@ -24,11 +26,18 @@ type State = {
   connection :: RedisConnection
 }
 
+data BookEvent = BookCreated Isbn
+               | BookUpdated Isbn
+               | BookDeleted Isbn
+
+bus :: SimpleBus.Bus BookEvent
+bus = SimpleBus.bus "book_library"
+
 dbPrefix :: String
 dbPrefix = "books:"
 
-dbId :: String -> DbId
-dbId isbn = wrap $ dbPrefix <> isbn
+dbId :: Isbn -> DbId
+dbId isbn = wrap $ dbPrefix <> unwrap isbn
 
 -- We pass this into every interaction with Gen so we know what gen server we're talking about
 -- The type of "State" is encoded into it so all callbacks are strongly typed around that
@@ -42,10 +51,11 @@ serverName = Local $ atom "book_library"
 create :: Book -> Effect (Either String Book)
 create book = 
   Gen.doCall serverName \state@{ connection } -> do
-    existing <- Redis.get (dbId book.isbn) connection
+    existing <- Redis.get (dbId $ book.isbn) connection
     case existing of
          Nothing -> do
-           Redis.put (dbId book.isbn) book connection
+           Redis.put (dbId $ book.isbn) book connection
+           SimpleBus.raise bus (BookCreated book.isbn)
            pure $ CallReply (Right book) state
          Just (gasp :: Book) -> 
            pure $ CallReply (Left "Book with this ISBN already exists") state
@@ -54,16 +64,18 @@ create book =
 update :: Book -> Effect (Either String Book)
 update book = 
   Gen.doCall serverName \state@{ connection } -> do
-    Redis.put (dbId book.isbn) book connection
+    Redis.put (dbId $ book.isbn) book connection
+    SimpleBus.raise bus (BookUpdated book.isbn)
     pure $ CallReply (Right book) state
 
-delete :: String -> Effect Unit
+delete :: Isbn -> Effect Unit
 delete isbn = 
   Gen.doCall serverName \state@{ connection } -> do
     Redis.delete (dbId isbn) connection
+    SimpleBus.raise bus (BookDeleted isbn)
     pure $ CallReply unit state
 
-findByIsbn :: String -> Effect (Maybe Book)
+findByIsbn :: Isbn -> Effect (Maybe Book)
 findByIsbn isbn = 
   Gen.doCall serverName \state@{ connection } -> do
     result <- Redis.get (dbId isbn) connection

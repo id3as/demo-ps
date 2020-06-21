@@ -12,4 +12,4 @@ logs
 releases
 primary_*
 _checkouts
-default.etcd
+log

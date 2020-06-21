@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 function stop_containers {
   docker stop demo_ps-redis || true
   docker rm demo_ps-redis || true

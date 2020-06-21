@@ -19,7 +19,7 @@ data Route
   | Book Isbn
   | Assets (Array String)
   | Index
-  | Index2 (Array String)
+  | Index2 String (Array String)
 
 derive instance genericRoute :: Generic Route _
 
@@ -34,12 +34,12 @@ isbn :: RouteDuplex' String -> RouteDuplex' Isbn
 isbn = asNewtype
 
 apiRoute :: RouteDuplex' Route
-apiRoute = path "/" $ sum
+apiRoute = path "" $ sum
   { "Books": "api" / "books" / noArgs
   , "Book": "api" / "books" / isbn segment
   , "Assets" : "assets" / rest
   , "Index" : noArgs
-  , "Index2" : rest
+  , "Index2" : segment / rest
   }
 
 routeUrl :: Route -> String

@@ -9,7 +9,7 @@ module BookWeb
 import Prelude
 
 import BookLibrary as BookLibrary
-import Books (Book)
+import Books (Book, Isbn)
 import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Effect (Effect)
@@ -48,7 +48,7 @@ init args = do
         , "Books": books
         , "Assets": PrivDir "demo_ps" "www/assets"
         , "Index": PrivFile "demo_ps" "www/index.html"
-        , "Index2": \(_ :: String) -> PrivFile "demo_ps" "www/index.html"
+        , "Index2": (\(_ :: String)  -> PrivFile "demo_ps" "www/index.html")
       }
     # Stetson.port args.webPort
     # Stetson.bindTo 0 0 0 0
@@ -73,11 +73,10 @@ books =
                  Left err -> Rest.result false (setBody err req) state
                  Right c -> Rest.result true req state
                                            
-book :: StetsonHandler (Maybe Book)
-book = 
+book :: Isbn -> StetsonHandler (Maybe Book)
+book id = 
   Rest.handler (\req -> do
-                          let id = binding (atom "isbn") req
-                          book <- maybe (pure Nothing) BookLibrary.findByIsbn id
+                          book <- BookLibrary.findByIsbn id
                           Rest.initResult req book)
     # Rest.allowedMethods (\req state -> Rest.result (Stetson.HEAD : Stetson.PUT : Stetson.DELETE : Stetson.GET : Stetson.OPTIONS : nil) req state)
     # Rest.resourceExists (\req state -> 

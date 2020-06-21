@@ -4,15 +4,21 @@ import Effect
 import Erl.Data.List
 import Prelude
 
+
+import Erl.Atom (atom)
 import BookWeb as BookWeb
 import BookLibrary as BookLibrary
 import BookConfig as BookConfig
+import HandleInfoExample as HandleInfoExample
 import Pinto as Pinto
 import Pinto.Sup (SupervisorChildRestart(..), SupervisorChildShutdown(..), SupervisorChildType(..), SupervisorSpec, SupervisorStrategy(..), buildChild, buildSupervisor, childId, childRestart, childShutdown, childStart, childStartTemplate, childType, supervisorChildren, supervisorIntensity, supervisorPeriod, supervisorStrategy)
 import Pinto.Sup as Sup
 
+serverName :: Pinto.SupervisorName
+serverName = (Pinto.Local $ atom "book_sup")
+
 startLink :: Effect Pinto.StartLinkResult
-startLink = Sup.startLink "book_sup" init
+startLink = Sup.startLink serverName  init
 
 init :: Effect SupervisorSpec
 init = do
@@ -31,4 +37,9 @@ init = do
                                        # childType Worker
                                        # childId "book_library"
                                        # childStart BookLibrary.startLink { connectionString } )
+                                       : 
+                                       ( buildChild
+                                       # childType Worker
+                                       # childId "handle_info_example"
+                                       # childStart HandleInfoExample.startLink {} )
                                         : nil)
