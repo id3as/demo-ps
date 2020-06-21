@@ -1,4 +1,4 @@
-pure_unit::script_path() {
+demo_ps::script_path() {
   # BASH
   if [[ -n "${BASH_SOURCE[0]}" ]]; then
     echo "${BASH_SOURCE[0]}"
@@ -11,10 +11,10 @@ pure_unit::script_path() {
   return
 }
 
-pure_unit::establish_environment() {
+demo_ps::establish_environment() {
   local this_dir
   local proj_dir
-  this_dir=$(dirname "$(pure_unit::script_path)")
+  this_dir=$(dirname "$(demo_ps::script_path)")
   proj_dir=$(readlink --canonicalize "${this_dir}/..")
 
   printf "Running from %s, the project directory is %s...\n" "${this_dir}" "${proj_dir}"
@@ -22,8 +22,8 @@ pure_unit::establish_environment() {
   source_env "${this_dir}/common/dev.sh"
 }
 
-pure_unit::establish_environment
+demo_ps::establish_environment
 
-unset -f pure_unit::establish_environment
-unset -f pure_unit::script_path
+unset -f demo_ps::establish_environment
+unset -f demo_ps::script_path
 
