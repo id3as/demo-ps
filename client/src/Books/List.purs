@@ -5,6 +5,7 @@ import Prelude
 import BookClient.Navigation (GlobalMessage(..), Route(..))
 import BookClient.Shared (StatusMessage(..), loadList, onClick)
 import Books (Book)
+import Data.Newtype (unwrap)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Halogen (liftAff)
@@ -65,13 +66,13 @@ component =
        Tick -> pure unit 
        EditBook book ev -> do
          H.liftEffect $ preventDefault ev 
-         H.raise $ NavigateToRoute $ BooksEdit book.isbn
+         H.raise $ NavigateToRoute $ BooksEdit $ unwrap book.isbn
        AddBook ev -> do
          H.liftEffect $ preventDefault ev 
          H.raise $ NavigateToRoute BooksNew
        DeleteBook book ev -> do
          H.liftEffect $ preventDefault ev 
-         H.raise $ NavigateToRoute $ BooksDelete book.isbn
+         H.raise $ NavigateToRoute $ BooksDelete $ unwrap book.isbn
 
 loadBooksIntoState :: ActionHandler
 loadBooksIntoState = do

@@ -3,6 +3,7 @@ module BookLibrary where
 import Prelude
 
 import Books (Book)
+import Erl.Atom (atom)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (wrap)
@@ -31,8 +32,8 @@ dbId isbn = wrap $ dbPrefix <> isbn
 
 -- We pass this into every interaction with Gen so we know what gen server we're talking about
 -- The type of "State" is encoded into it so all callbacks are strongly typed around that
-serverName :: ServerName State
-serverName = ServerName "book_library"
+serverName :: ServerName State Unit
+serverName = Local $ atom "book_library"
 
 -- Note: It makes little sense *really* to hide a (largely) stateless connection
 -- behind a gen-server, unless you *really* want a single R/W sync point
@@ -78,7 +79,7 @@ findAll =
 -- We can supply arbitrary arguments to this via the gensup
 startLink :: BookLibraryStartArgs -> Effect StartLinkResult
 startLink args =
-  Gen.startLink serverName $ init args
+  Gen.startLink serverName (init args) Gen.defaultHandleInfo
 
 -- And those arguments can then end up in here, which just needs to return an effect of our State type
 init :: BookLibraryStartArgs -> Effect State

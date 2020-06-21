@@ -1,128 +1,17 @@
-{-
-Welcome to your new Dhall package-set!
+let upstream = https://github.com/purerl/package-sets/releases/download/erl-0.13.6-20200402/packages.dhall sha256:5442e50aa76c20bd60b2770ab41c68bae80f6ec96f2df1cfaea310673de567d1
 
-Below are instructions for how to edit this file for most use
-cases, so that you don't need to know Dhall to use it.
-
-## Warning: Don't Move This Top-Level Comment!
-
-Due to how `dhall format` currently works, this comment's
-instructions cannot appear near corresponding sections below
-because `dhall format` will delete the comment. However,
-it will not delete a top-level comment like this one.
-
-## Use Cases
-
-Most will want to do one or both of these options:
-1. Override/Patch a package's dependency
-2. Add a package not already in the default package set
-
-This file will continue to work whether you use one or both options.
-Instructions for each option are explained below.
-
-### Overriding/Patching a package
-
-Purpose:
-- Change a package's dependency to a newer/older release than the
-    default package set's release
-- Use your own modified version of some dependency that may
-    include new API, changed API, removed API by
-    using your custom git repo of the library rather than
-    the package set's repo
-
-Syntax:
-Replace the overrides' "{=}" (an empty record) with the following idea
-The "//" or "⫽" means "merge these two records and
-  when they have the same value, use the one on the right:"
--------------------------------
-let override =
-  { packageName =
-      upstream.packageName // { updateEntity1 = "new value", updateEntity2 = "new value" }
-  , packageName =
-      upstream.packageName // { version = "v4.0.0" }
-  , packageName =
-      upstream.packageName // { repo = "https://www.example.com/path/to/new/repo.git" }
-  }
--------------------------------
-
-Example:
--------------------------------
 let overrides =
-  { halogen =
-      upstream.halogen // { version = "master" }
-  , halogen-vdom =
-      upstream.halogen-vdom // { version = "v4.0.0" }
-  }
--------------------------------
+      { erl-cowboy =
+          { dependencies = [ "erl-modules" ]
+          , repo = "https://github.com/id3as/purescript-erl-cowboy.git"
+          , version = "4ee391f0349c00d92f68e4331425174eb8bdff9e"
+          },
 
-### Additions
-
-Purpose:
-- Add packages that aren't already included in the default package set
-
-Syntax:
-Replace the additions' "{=}" (an empty record) with the following idea:
--------------------------------
-let additions =
-  { package-name =
-       { dependencies =
-           [ "dependency1"
-           , "dependency2"
-           ]
-       , repo =
-           "https://example.com/path/to/git/repo.git"
-       , version =
-           "tag ('v4.0.0') or branch ('master')"
-       }
-  , package-name =
-       { dependencies =
-           [ "dependency1"
-           , "dependency2"
-           ]
-       , repo =
-           "https://example.com/path/to/git/repo.git"
-       , version =
-           "tag ('v4.0.0') or branch ('master')"
-       }
-  , etc.
-  }
--------------------------------
-
-Example:
--------------------------------
-let additions =
-  { benchotron =
-      { dependencies =
-          [ "arrays"
-          , "exists"
-          , "profunctor"
-          , "strings"
-          , "quickcheck"
-          , "lcg"
-          , "transformers"
-          , "foldable-traversable"
-          , "exceptions"
-          , "node-fs"
-          , "node-buffer"
-          , "node-readline"
-          , "datetime"
-          , "now"
-          ]
-      , repo =
-          "https://github.com/hdgarrood/purescript-benchotron.git"
-      , version =
-          "v7.0.0"
+      erl-pinto =
+          { dependencies = [ "erl-cowboy", "erl-process" ]
+          , repo = "ssh://git@github.com/id3as/purescript-erl-pinto.git"
+          , version = "834b67c509052f27ee4903ee14f17a6dc15e2184"
+          }
       }
-  }
--------------------------------
--}
 
-
-let upstream =
-      https://github.com/purerl/package-sets/releases/download/erl-0.13.5-20191213/packages.dhall sha256:73638b403bffb6070be6ce226649111f0bcef8be5ed360f064219baf41e0429a
-
-let overrides = {=}
-
-let additions = {=}
-
-in  upstream // overrides // additions
+in  upstream ⫽ overrides

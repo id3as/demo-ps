@@ -12,6 +12,7 @@ import BookClient.Navigation (GlobalMessage(..), Route(..))
 import BookClient.Shared (StatusMessage(..), ValidationMap, renderMessage, validationFor, warningMessage)
 import Books (Book)
 import Data.Either (Either(..), either)
+import Data.Newtype (wrap, unwrap)
 import Data.HTTP.Method (Method(..))
 import Data.Map (isEmpty) as Map
 import Data.Maybe (Maybe(..))
@@ -55,7 +56,7 @@ component =
   where
 
   initialState :: BooksInput -> Model
-  initialState _ = { message: NoMessage, posting: false, book: { isbn: "", title: "", author: "" }, validation: mempty }
+  initialState _ = { message: NoMessage, posting: false, book: { isbn: wrap "", title: "", author: "" }, validation: mempty }
 
   render :: Model -> RenderHandler
   render { message, book, validation, posting } = 
@@ -63,7 +64,7 @@ component =
               , HH.div [] 
                 [ HH.div [ HP.class_ B.formGroup ] 
                     [ HH.label [ HP.for "isbn" ] [ HH.text "Isbn" ]
-                    , HH.input [ HP.class_ B.formControl, HP.id_ "isbn", HP.value $ book.isbn, HE.onValueInput (Just <<< IsbnChanged) ] 
+                    , HH.input [ HP.class_ B.formControl, HP.id_ "isbn", HP.value $ unwrap book.isbn, HE.onValueInput (Just <<< IsbnChanged) ] 
                     , validationFor validation "isbn" "This is the registered ISBN of the book"
                     ]
                 , HH.div [ HP.class_ B.formGroup ] 
@@ -87,7 +88,7 @@ component =
   handleAction :: Action -> ActionHandler
   handleAction action =  do
      case action of
-          IsbnChanged value -> updateBook (\b -> b { isbn = value })
+          IsbnChanged value -> updateBook (\b -> b { isbn = wrap value })
           TitleChanged value -> updateBook (\b -> b { title = value })
           AuthorChanged value -> updateBook (\b -> b { author = value })
           SaveNewBook ev -> do

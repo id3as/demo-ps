@@ -14,7 +14,7 @@ import Data.Either (Either(..), either)
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..))
 import Data.MediaType (MediaType(..))
-import Data.Newtype (unwrap)
+import Data.Newtype (unwrap, wrap)
 import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -50,7 +50,7 @@ component =
   where
 
   initialState :: BookInput -> Model
-  initialState isbn = { message: NoMessage, posting: false, book: { isbn: unwrap isbn, title: "", author: "" } }
+  initialState isbn = { message: NoMessage, posting: false, book: { isbn: wrap $ unwrap isbn, title: "", author: "" } }
 
   render :: Model -> RenderHandler
   render { message, book, posting } = 
@@ -59,7 +59,7 @@ component =
               , HH.div [] 
                 [ HH.div [ HP.class_ B.formGroup ] 
                     [ HH.label [ HP.for "isbn" ] [ HH.text "Isbn" ]
-                    , HH.input [ HP.class_ B.formControl, HP.id_ "isbn", HP.value $ book.isbn, HP.readOnly true ] 
+                    , HH.input [ HP.class_ B.formControl, HP.id_ "isbn", HP.value $ unwrap book.isbn, HP.readOnly true ] 
                     ]
                 , HH.div [ HP.class_ B.formGroup ] 
                     [ HH.label [ HP.for "title" ] [ HH.text "Title" ]
@@ -92,7 +92,7 @@ component =
 loadBook :: ActionHandler
 loadBook = do
   state@{ book: { isbn } } <- H.get
-  maybeBook <- H.liftAff $ loadItem $ "/api/books/" <> isbn
+  maybeBook <- H.liftAff $ loadItem $ "/api/books/" <> unwrap isbn
   case maybeBook of
        Left _ -> do
          H.raise $ NavigateToRoute BooksIndex
@@ -103,7 +103,7 @@ deleteBook = do
   state@{ book } <- H.get
   _ <- H.put state { posting = true }
   response <- H.liftAff $ AX.request $ (AX.defaultRequest 
-               { url = "/api/books/" <>  book.isbn
+               { url = "/api/books/" <>  unwrap book.isbn
                , method = Left DELETE
                , headers = [ ContentType $ MediaType "application/json" ]
                , responseFormat = AXResponse.string  

@@ -26,25 +26,30 @@ import Stetson (RestResult, StaticAssetLocation(..), StetsonHandler)
 import Stetson as Stetson
 import Stetson.Rest as Rest
 import Unsafe.Coerce (unsafeCoerce)
+import Routes as Routes
 
 newtype State = State {}
 
 type BookWebStartArgs = { webPort :: Int }
 
-serverName :: ServerName State
-serverName = ServerName "book_web"
+serverName :: ServerName State Unit
+serverName = Local $ atom "book_web"
 
 startLink :: BookWebStartArgs -> Effect StartLinkResult
 startLink args =
-  Gen.startLink serverName $ init args
+  Gen.startLink serverName (init args) Gen.defaultHandleInfo
 
 init :: BookWebStartArgs -> Effect State
 init args = do
   Stetson.configure
-    # Stetson.route "/api/books" books
-    # Stetson.route "/api/books/:isbn" book
-    # Stetson.static "/assets/[...]" (PrivDir "demo_ps" "www/assets")
-    # Stetson.static "/[...]" (PrivFile "demo_ps" "www/index.html")
+    # Stetson.routes 
+      Routes.apiRoute {
+          "Book": book
+        , "Books": books
+        , "Assets": PrivDir "demo_ps" "www/assets"
+        , "Index": PrivFile "demo_ps" "www/index.html"
+        , "Index2": \(_ :: String) -> PrivFile "demo_ps" "www/index.html"
+      }
     # Stetson.port args.webPort
     # Stetson.bindTo 0 0 0 0
     # Stetson.startClear "http_listener"
