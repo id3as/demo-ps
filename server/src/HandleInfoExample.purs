@@ -39,7 +39,6 @@ init args = do
 
 handleInfo :: Msg -> State -> Effect (CastResult State)
 handleInfo msg state = do
-  _ <- Logger.debug1 "Got a msg  ~p" msg
   case msg of
     BookMsg bookEvent -> handleBookEvent bookEvent state
 

@@ -41,7 +41,7 @@ startLink args =
 
 init :: BookWebStartArgs -> Effect State
 init args = do
-  Stetson.configure
+  _ <- Stetson.configure
     # Stetson.routes 
       Routes.apiRoute {
           "Book": book

@@ -5,7 +5,6 @@
     [ "console"
     , "effect"
     , "erl-cowboy"
-    , "erl-lager"
     , "erl-pinto"
     , "erl-stetson"
     , "psci-support"
