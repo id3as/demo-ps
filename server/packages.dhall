@@ -16,7 +16,7 @@ let overrides =
       erl-stetson =
           { dependencies = ["erl-atom" , "erl-binary" , "erl-lists" , "erl-maps" , "erl-tuples" , "erl-modules" , "foreign" , "maybe" , "prelude" , "transformers" , "routing-duplex"]
           , repo = "ssh://git@github.com/id3as/purescript-erl-stetson.git"
-          , version = "cfd31c1ad8b87b15c507e664b63516a8b5d0f165"
+          , version = "a16698b3b0935f894a76d1d63851431bc540c382"
           }
       }
 
