@@ -7,9 +7,8 @@
 
 
 subscribe_(BusName, Callback) ->
-  fun() ->
-    Recipient = self(),
-    Fun = fun Fun(MonitorRef) ->
+  Recipient = self(),
+  Fun = fun Fun(MonitorRef) ->
               receive
                 stop ->
                   gproc:unreg({p, l, BusName}),
@@ -19,16 +18,16 @@ subscribe_(BusName, Callback) ->
                   gproc:unreg({p, l, BusName}),
                   exit(normal);
                 Msg ->
-                  Callback(Msg),
+                  (Callback(Msg))(), %% Invoke the effect immediately
                   Fun(MonitorRef)
               end
-          end,
-    fun() ->
-        spawn_link(fun() ->
-                       gproc:reg({p, l, BusName}),
-                       MonitorRef = monitor(process, Recipient),
-                       Fun(MonitorRef) end)
-    end
+           end,
+  fun() ->
+    spawn_link(fun() ->
+                   gproc:reg({p, l, BusName}),
+                   MonitorRef = monitor(process, Recipient),
+                   Fun(MonitorRef)
+               end)
   end.
 
 unsubscribe(Ref) ->

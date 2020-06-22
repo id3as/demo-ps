@@ -18,6 +18,9 @@ data Route
   = Books
   | Book Isbn
   | Assets (Array String)
+  | EventsWs
+  | EventsFirehoseRest
+  | EventsFirehoseStream
   | Index
   | Index2 String (Array String)
 
@@ -33,15 +36,21 @@ asNewtype = as unwrap (pure <<< wrap)
 isbn :: RouteDuplex' String -> RouteDuplex' Isbn
 isbn = asNewtype
 
+segmentExcept :: String -> RouteDuplex' String 
+segmentExcept s = as identity f $ segment
+  where
+  f x = if x == s then Left "matched except" else Right x
+
 apiRoute :: RouteDuplex' Route
 apiRoute = path "" $ sum
   { "Books": "api" / "books" / noArgs
   , "Book": "api" / "books" / isbn segment
-  , "EventsWs": "api" / "events" / "ws"
-  , "EventsFirehose": "api" / "events" / "firehose"
+  , "EventsWs": "api" / "events" / "ws" / noArgs
+  , "EventsFirehoseRest": "api" / "events" / "firehose" / "rest" / noArgs
+  , "EventsFirehoseStream": "api" / "events" / "firehose" / "stream" / noArgs
   , "Assets" : "assets" / rest
   , "Index" : noArgs
-  , "Index2" : segment / rest
+  , "Index2" : segmentExcept "api" / rest
   }
 
 routeUrl :: Route -> String

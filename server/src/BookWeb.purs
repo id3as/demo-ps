@@ -14,7 +14,8 @@ import Data.Either (Either(..), either)
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Effect (Effect)
 import Erl.Atom (atom)
-import Erl.Cowboy.Req (ReadBodyResult(..), Req, binding, readBody, setBody)
+import Erl.Data.Map as Map
+import Erl.Cowboy.Req (ReadBodyResult(..), Req, binding, readBody, setBody, streamReply, streamBody, StatusCode(..) )
 import Erl.Data.Binary (Binary)
 import Erl.Cowboy.Handlers.WebSocket (Frame(..))
 import Erl.Data.Binary.IOData (IOData, fromBinary, toBinary)
@@ -23,13 +24,15 @@ import Erl.Data.Tuple (Tuple2, tuple2)
 import Pinto (ServerName(..), StartLinkResult)
 import Pinto.Gen as Gen
 import Simple.JSON (class WriteForeign, readJSON, writeJSON)
-import Stetson (RestResult, StaticAssetLocation(..), StetsonHandler, ReceivingStetsonHandler, emptyHandler, CowboyHandler(..))
+import Stetson (RestResult, StaticAssetLocation(..), StetsonHandler, ReceivingStetsonHandler, emptyHandler, CowboyHandler(..), LoopCallResult(..))
 import Stetson as Stetson
 import Stetson.Rest as Rest
+import Stetson.Loop as Loop
 import Stetson.WebSocket as WebSocket
 import Unsafe.Coerce (unsafeCoerce)
 import Routes as Routes
 import SimpleBus as SimpleBus
+import Logger as Logger
 
 newtype State = State {}
 
@@ -50,7 +53,8 @@ init args = do
           "Book": book
         , "Books": books
         , "EventsWs": eventsWs
-        , "EventsFirehose": eventsFirehose
+        , "EventsFirehoseRest": eventsFirehoseRest
+        , "EventsFirehoseStream": eventsFirehoseStream
         , "Assets": PrivDir "demo_ps" "www/assets"
         , "Index": PrivFile "demo_ps" "www/index.html"
         , "Index2": (\(_ :: String)  -> PrivFile "demo_ps" "www/index.html")
@@ -127,16 +131,37 @@ eventsWs =
   -- Yeeaha
   # WebSocket.yeeha
 
-eventsFirehose :: ReceivingStetsonHandler EventsWsMsg Unit
-eventsFirehose =
+eventsFirehoseRest :: ReceivingStetsonHandler EventsWsMsg Unit
+eventsFirehoseRest =
   emptyHandler (\req -> Rest.initResult req unit)
     # Rest.allowedMethods (\req state -> Rest.result (Stetson.POST :  Stetson.HEAD : Stetson.GET : Stetson.OPTIONS : nil) req state)
     # Rest.contentTypesProvided (\req state -> Rest.result (streamEvents : nil) req state)
---    # Loop.info
+    # Loop.init (\emitter req state -> do
+                              _ <- SimpleBus.subscribe BookLibrary.bus (\ev -> emitter $ BookMsg ev)
+                              pure state)
+    # Loop.info (\(BookMsg msg) req state ->  do
+       _ <- Logger.info1 "Sending ~p" msg
+          _ <- streamBody (stringToBinary $ writeJSON msg) req
+          pure $ LoopOk req state)
     # Rest.yeeha
     where 
-          streamEvents = tuple2 "application/json" (\req state -> Rest.switchHandler LoopHandler req state)
+          streamEvents = tuple2 "application/json" (\req state -> do
+                         req2 <- streamReply (StatusCode 200) Map.empty req
+                         Rest.switchHandler LoopHandler req2 state)
                                            
+eventsFirehoseStream :: ReceivingStetsonHandler EventsWsMsg Unit
+eventsFirehoseStream =
+  Loop.handler (\req -> do
+               req2 <- streamReply (StatusCode 200) Map.empty req
+               Loop.initResult req2 unit)
+    # Loop.init (\emitter req state -> do
+                              _ <- SimpleBus.subscribe BookLibrary.bus (\ev -> emitter $ BookMsg ev)
+                              pure state)
+    # Loop.info (\(BookMsg msg) req state ->  do
+          _ <- Logger.info1 "Sending ~p" msg
+          _ <- streamBody (stringToBinary $ writeJSON msg) req
+          pure $ LoopOk req state)
+    # Rest.yeeha
 
 
 jsonWriter :: forall a. WriteForeign a => Tuple2 String (Req -> a -> (Effect (RestResult String a)))
@@ -151,3 +176,5 @@ allBody req acc = do
 
 
 
+stringToBinary :: String -> Binary
+stringToBinary = unsafeCoerce
