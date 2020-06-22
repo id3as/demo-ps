@@ -2,7 +2,7 @@ module BookLibrary where
 
 import Prelude
 
-import Books (Book,  Isbn)
+import Books (Book,  Isbn,  BookEvent(..))
 import Erl.Atom (atom)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
@@ -26,9 +26,6 @@ type State = {
   connection :: RedisConnection
 }
 
-data BookEvent = BookCreated Isbn
-               | BookUpdated Isbn
-               | BookDeleted Isbn
 
 bus :: SimpleBus.Bus BookEvent
 bus = SimpleBus.bus "book_library"

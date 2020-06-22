@@ -1,16 +1,21 @@
 module SimpleBus where
 
 import Prelude
-import Gproc as Gproc
 import Pinto (ServerName(..))
 import Pinto.Gen as Gen
 import Effect (Effect)
 import Data.Maybe (Maybe(..))
+import Erl.Process.Raw (Pid)
 import Data.Newtype (unwrap, wrap, class  Newtype)
+import Stetson.Types (ReceivingStetsonHandler)
 
-foreign import mapBusMessage :: forall msg recvMsg. BusName -> (msg -> recvMsg) -> (recvMsg -> Maybe recvMsg) -> Maybe recvMsg -> msg -> Maybe recvMsg
+foreign import subscribe_ :: forall msg. BusName -> (msg -> Effect Unit) -> Effect SubscriptionRef 
+foreign import unsubscribe :: SubscriptionRef -> Effect Unit
+foreign import raise_ :: forall msg. BusName -> msg -> Effect Unit 
 
+newtype SubscriptionRef = SubscriptionRef Pid
 newtype BusName = BusName String
+
 derive instance ntBusName :: Newtype BusName _
 
 data Bus msg = Bus BusName
@@ -20,10 +25,8 @@ bus name  = Bus $ BusName name
 
 raise :: forall msg. Bus msg ->  msg -> Effect Unit
 raise (Bus name) msg =
-  Gproc.send (unwrap name) msg
+  raise_ name msg
 
-genSubscribe :: forall state msg recvMsg. ServerName state recvMsg -> Bus msg -> (msg -> recvMsg)  -> Effect Unit
-genSubscribe serverName (Bus name) lift = do
-  _ <- Gen.registerExternalMapping serverName $ mapBusMessage name lift Just Nothing
-  _ <- Gproc.reg (unwrap name)
-  pure unit
+subscribe :: forall msg. Bus msg -> (msg -> Effect Unit) ->  Effect SubscriptionRef
+subscribe (Bus name) callback = 
+  subscribe_ name callback

@@ -2,7 +2,7 @@ module HandleInfoExample where
 
 import Prelude
 
-import Books (Book,  Isbn)
+import Books (Book,  Isbn, BookEvent(..))
 import Erl.Atom (atom)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
@@ -22,7 +22,7 @@ import Logger as Logger
 type BookWatchingStartArgs = {}
 type State = {}
 
-data Msg = BookMsg BookLibrary.BookEvent 
+data Msg = BookMsg BookEvent 
 
 serverName :: ServerName State Msg
 serverName = Local $ atom "handle_info_example"
@@ -33,8 +33,7 @@ startLink args =
 
 init :: BookWatchingStartArgs -> Effect State
 init args = do
-  _ <- Logger.info1 "Handle info example  started ~p" ""
-  SimpleBus.genSubscribe serverName BookLibrary.bus BookMsg
+  _ <- SimpleBus.subscribe BookLibrary.bus (Gen.emitter serverName BookMsg)
   pure $ {}
 
 handleInfo :: Msg -> State -> Effect (CastResult State)
@@ -42,16 +41,16 @@ handleInfo msg state = do
   case msg of
     BookMsg bookEvent -> handleBookEvent bookEvent state
 
-handleBookEvent :: BookLibrary.BookEvent -> State -> Effect (CastResult State)
+handleBookEvent :: BookEvent -> State -> Effect (CastResult State)
 handleBookEvent ev state =
   case ev of
-    BookLibrary.BookCreated isbn -> do
+    BookCreated isbn -> do
       _ <- Logger.info1 "Book created ~p" isbn
       pure $ CastNoReply state
-    BookLibrary.BookDeleted isbn -> do
+    BookDeleted isbn -> do
       _ <- Logger.info1 "Book deleted ~p" isbn
       pure $ CastNoReply state
-    BookLibrary.BookUpdated isbn -> do
+    BookUpdated isbn -> do
       _ <- Logger.info1 "Book updated ~p" isbn
       pure $ CastNoReply state
 

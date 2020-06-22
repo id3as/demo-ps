@@ -37,6 +37,8 @@ apiRoute :: RouteDuplex' Route
 apiRoute = path "" $ sum
   { "Books": "api" / "books" / noArgs
   , "Book": "api" / "books" / isbn segment
+  , "EventsWs": "api" / "events" / "ws"
+  , "EventsFirehose": "api" / "events" / "firehose"
   , "Assets" : "assets" / rest
   , "Index" : noArgs
   , "Index2" : segment / rest
