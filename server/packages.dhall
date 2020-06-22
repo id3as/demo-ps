@@ -20,4 +20,12 @@ let overrides =
           }
       }
 
-in  upstream ⫽ overrides
+let extras = {
+      erl-simplebus =
+          { dependencies = [ "erl-process" ]
+          , repo = "ssh://git@github.com/id3as/purescript-erl-simplebus.git"
+          , version = "e785b8ba8ac74568513c15c2302075752b7d9e5d"
+          }
+  }
+
+in  upstream ⫽ overrides⫽ extras

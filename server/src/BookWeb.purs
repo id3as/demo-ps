@@ -140,7 +140,7 @@ eventsFirehoseRest =
                               _ <- SimpleBus.subscribe BookLibrary.bus (\ev -> emitter $ BookMsg ev)
                               pure state)
     # Loop.info (\(BookMsg msg) req state ->  do
-       _ <- Logger.info1 "Sending ~p" msg
+          _ <- Logger.info1 "Sending ~p" msg
           _ <- streamBody (stringToBinary $ writeJSON msg) req
           pure $ LoopOk req state)
     # Rest.yeeha

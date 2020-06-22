@@ -9,6 +9,7 @@
     , "erl-stetson"
     , "psci-support"
     , "simple-json"
+    , "erl-simplebus"
     ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
