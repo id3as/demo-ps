@@ -29,11 +29,12 @@ serverName = Local $ atom "handle_info_example"
 
 startLink :: BookWatchingStartArgs -> Effect StartLinkResult
 startLink args =
-  Gen.startLink serverName (init args) handleInfo
+  Gen.buildStartLink serverName (init args) $ Gen.defaultStartLink { handleInfo = handleInfo }
 
 init :: BookWatchingStartArgs -> Effect State
 init args = do
-  _ <- SimpleBus.subscribe BookLibrary.bus (Gen.emitter serverName BookMsg)
+  emitter <- Gen.emitter serverName 
+  _ <- SimpleBus.subscribe BookLibrary.bus $ emitter <<< BookMsg
   pure $ {}
 
 handleInfo :: Msg -> State -> Effect (CastResult State)

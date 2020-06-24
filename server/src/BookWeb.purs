@@ -33,6 +33,7 @@ import Unsafe.Coerce (unsafeCoerce)
 import Routes as Routes
 import SimpleBus as SimpleBus
 import Logger as Logger
+import MonitorExample as MonitorExample
 
 newtype State = State {}
 
@@ -43,7 +44,7 @@ serverName = Local $ atom "book_web"
 
 startLink :: BookWebStartArgs -> Effect StartLinkResult
 startLink args =
-  Gen.startLink serverName (init args) Gen.defaultHandleInfo
+  Gen.startLink serverName (init args) 
 
 init :: BookWebStartArgs -> Effect State
 init args = do
@@ -54,7 +55,7 @@ init args = do
         , "Books": books
         , "EventsWs": eventsWs
         , "EventsFirehoseRest": eventsFirehoseRest
-        , "EventsFirehoseStream": eventsFirehoseStream
+        , "DataStream": dataStream
         , "Assets": PrivDir "demo_ps" "www/assets"
         , "Index": PrivFile "demo_ps" "www/index.html"
         , "Index2": (\(_ :: String)  -> PrivFile "demo_ps" "www/index.html")
@@ -131,37 +132,103 @@ eventsWs =
   -- Yeeaha
   # WebSocket.yeeha
 
+-- This is a handler that starts off being a RestHandler
+-- but then switches into a LoopHandler for streaming the data once Conneg has taken place
 eventsFirehoseRest :: ReceivingStetsonHandler EventsWsMsg Unit
 eventsFirehoseRest =
+  -- So empty handler that returns a Rest.initResult
   emptyHandler (\req -> Rest.initResult req unit)
-    # Rest.allowedMethods (\req state -> Rest.result (Stetson.POST :  Stetson.HEAD : Stetson.GET : Stetson.OPTIONS : nil) req state)
+
+    -- Standard read-only headers
+    # Rest.allowedMethods (\req state -> Rest.result (Stetson.HEAD : Stetson.GET : Stetson.OPTIONS : nil) req state)
+
+    -- And we'll say "hey, we provide this type of data" (which is application/json)
+    -- The next thing to read is the streamEvents function below if we're being chronological
     # Rest.contentTypesProvided (\req state -> Rest.result (streamEvents : nil) req state)
+
+    -- Once we've switched to the Loop handler, we'll be given a chance to register
+    -- any callbacks with the emitter for this handler
     # Loop.init (\emitter req state -> do
-                              _ <- SimpleBus.subscribe BookLibrary.bus (\ev -> emitter $ BookMsg ev)
+                                
+                              -- In this case, we'll subscribe to the bus and throw any messages it sends us 
+                              -- into BookMsg
+                              _ <- SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> emitter
                               pure state)
+
+    -- And then those messages will appear here so we can
     # Loop.info (\(BookMsg msg) req state ->  do
-          _ <- Logger.info1 "Sending ~p" msg
+
+          -- Stream them to the client as we get them
           _ <- streamBody (stringToBinary $ writeJSON msg) req
+          
+          -- And keep on loopin'
           pure $ LoopOk req state)
-    # Rest.yeeha
+
+    # Loop.yeeha
     where 
+          -- So we provide application/json, and if they choose to take that then
+          -- we'll call streamReply on Cowboy to let it know that's what we're doing
           streamEvents = tuple2 "application/json" (\req state -> do
                          req2 <- streamReply (StatusCode 200) Map.empty req
+
+                         -- And then we'll switch to the LoopHandler (head back up to Loop.init)
                          Rest.switchHandler LoopHandler req2 state)
+
+
+data DataStreamMessage = Data Binary
+                       | DataSourceDied
+                       | DataSourceAlreadyDown
+                        
                                            
-eventsFirehoseStream :: ReceivingStetsonHandler EventsWsMsg Unit
-eventsFirehoseStream =
+-- This is a handler analogous to cowboy_loop
+dataStream :: ReceivingStetsonHandler DataStreamMessage Unit
+dataStream =
   Loop.handler (\req -> do
+
+               -- Start off by initting the streamed  response, no headers, lazy
                req2 <- streamReply (StatusCode 200) Map.empty req
+
+               -- And return the Loop handler
                Loop.initResult req2 unit)
-    # Loop.init (\emitter req state -> do
-                              _ <- SimpleBus.subscribe BookLibrary.bus (\ev -> emitter $ BookMsg ev)
-                              pure state)
-    # Loop.info (\(BookMsg msg) req state ->  do
-          _ <- Logger.info1 "Sending ~p" msg
-          _ <- streamBody (stringToBinary $ writeJSON msg) req
-          pure $ LoopOk req state)
-    # Rest.yeeha
+
+    -- Now we've decided to be a loop handler, we'll be given the emitter
+    -- into which we can pass messages that'll appear in 'info'
+    # Loop.init (\emitter req state -> do 
+                                        
+                                        -- We'll register our emitter with the gen server
+                                        -- It can then send us messages
+                                        void $ MonitorExample.registerClient $ emitter <<< Data
+
+                                        -- But we'll also add a monitor to that gen server so we know if it dies
+                                        -- There are two messages here, we could just use the same one but I want the example to be clear
+                                        void $ Gen.monitor MonitorExample.serverName (\_ -> emitter DataSourceDied) (emitter DataSourceAlreadyDown)
+
+                                        -- And carry on
+                                        pure unit)
+
+    -- If we receive a message from the gen server
+    # Loop.info (\msg req state ->  do
+                case msg of
+                     Data binary -> do
+
+                        -- Then stream that down to the client
+                        _ <- streamBody binary req
+
+                        -- And LoopOk cos we'll wait for the next message
+                        pure $ LoopOk req state
+
+                     DataSourceDied ->  do
+
+                       -- then terminate the stream
+                       pure $ LoopStop req state
+
+                     DataSourceAlreadyDown ->  do
+
+                       -- and here too
+                       pure $ LoopStop req state
+                 )
+
+    # Loop.yeeha
 
 
 jsonWriter :: forall a. WriteForeign a => Tuple2 String (Req -> a -> (Effect (RestResult String a)))

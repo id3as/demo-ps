@@ -27,7 +27,7 @@ type State = {
 }
 
 
-bus :: SimpleBus.Bus BookEvent
+bus :: SimpleBus.Bus String BookEvent
 bus = SimpleBus.bus "book_library"
 
 dbPrefix :: String
@@ -88,7 +88,7 @@ findAll =
 -- We can supply arbitrary arguments to this via the gensup
 startLink :: BookLibraryStartArgs -> Effect StartLinkResult
 startLink args =
-  Gen.startLink serverName (init args) Gen.defaultHandleInfo
+  Gen.startLink serverName (init args)
 
 -- And those arguments can then end up in here, which just needs to return an effect of our State type
 init :: BookLibraryStartArgs -> Effect State

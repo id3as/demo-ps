@@ -20,7 +20,7 @@ data Route
   | Assets (Array String)
   | EventsWs
   | EventsFirehoseRest
-  | EventsFirehoseStream
+  | DataStream
   | Index
   | Index2 String (Array String)
 
@@ -47,7 +47,7 @@ apiRoute = path "" $ sum
   , "Book": "api" / "books" / isbn segment
   , "EventsWs": "api" / "events" / "ws" / noArgs
   , "EventsFirehoseRest": "api" / "events" / "firehose" / "rest" / noArgs
-  , "EventsFirehoseStream": "api" / "events" / "firehose" / "stream" / noArgs
+  , "DataStream": "api" / "stream" / noArgs
   , "Assets" : "assets" / rest
   , "Index" : noArgs
   , "Index2" : segmentExcept "api" / rest
