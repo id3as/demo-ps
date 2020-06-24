@@ -27,21 +27,33 @@ data Msg = BookMsg BookEvent
 serverName :: ServerName State Msg
 serverName = Local $ atom "handle_info_example"
 
+-- Rather than using the default startLink, we use buildStartLink so we can provide
+-- our own handleInfo function
 startLink :: BookWatchingStartArgs -> Effect StartLinkResult
 startLink args =
   Gen.buildStartLink serverName (init args) $ Gen.defaultStartLink { handleInfo = handleInfo }
 
 init :: BookWatchingStartArgs -> Effect State
 init args = do
+  -- We can get hold  of an emitter, which is of type (Msg -> Effect Unit) as defined bby serverName
+  -- Anything passed  into this will appear in our handleInfo (ooh typing)
+  -- And thus this emitter can be passed into any process that wishes to send us messages
   emitter <- Gen.emitter serverName 
+
+  -- Speaking of, SimpleBus.subscribe is such a thing, given a bus name
+  -- and an emitter, we'll be given messages of the right type 
   _ <- SimpleBus.subscribe BookLibrary.bus $ emitter <<< BookMsg
   pure $ {}
 
 handleInfo :: Msg -> State -> Effect (CastResult State)
 handleInfo msg state = do
   case msg of
+    -- And that means we can switch over the messages as they come in
+    -- All the typing..
     BookMsg bookEvent -> handleBookEvent bookEvent state
 
+-- And all we will do is log that we saw the events 
+-- as this demo ends here
 handleBookEvent :: BookEvent -> State -> Effect (CastResult State)
 handleBookEvent ev state =
   case ev of

@@ -46,7 +46,6 @@ startLink :: BookWatchingStartArgs -> Effect StartLinkResult
 startLink args =
   Gen.buildStartLink serverName (init args) $ Gen.defaultStartLink { handleInfo = handleInfo }
 
-
 registerClient :: MessageHandler -> Effect Unit
 registerClient handler = do
   handlerPid <- self
