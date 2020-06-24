@@ -42,14 +42,23 @@ type BookWebStartArgs = { webPort :: Int }
 serverName :: ServerName State Unit
 serverName = Local $ atom "book_web"
 
+-- Yes we're housing a cowboy server behind a gen server
+-- this isn't necessary but it's somewhere to keep it
 startLink :: BookWebStartArgs -> Effect StartLinkResult
 startLink args =
   Gen.startLink serverName (init args) 
 
 init :: BookWebStartArgs -> Effect State
 init args = do
+  -- This is pretty self explanatory, Stetson.configure kicks off 
+  -- the process and then we can tweak that object by pipng it through
   _ <- Stetson.configure
     # Stetson.routes 
+      -- These routes are defined in a typed object
+      -- that dictate 
+      -- a) What paths to reach them on
+      -- b) What arguments they expect (typed(!!))
+      -- So the callbacks to these names are typed and can be referred to in shared/Routes.purs
       Routes.apiRoute {
           "Book": book
         , "Books": books
@@ -65,51 +74,83 @@ init args = do
     # Stetson.startClear "http_listener"
   pure $ State {}
 
+-- A plain ol' Handler that operates over a state of type 'List Book'
 books :: StetsonHandler (List Book)
 books =
+  -- We kick it off from the Rest namespace, so this is effectively cowboy_rest
   Rest.handler (\req -> do
+
+                        -- And  our state can just be all the books in the library
                         state <- BookLibrary.findAll
+
+                        -- Return our unmodified req along with our state
                         Rest.initResult req state)
+
+    -- Standard read/write methods
     # Rest.allowedMethods (\req state -> Rest.result (Stetson.POST :  Stetson.HEAD : Stetson.GET : Stetson.OPTIONS : nil) req state)
+
+    -- We provide/accept json, both of those are just callbacks
+    -- You can see how we'd use composition to just have a standard mechanism for returning json from an 'object'
     # Rest.contentTypesProvided (\req state -> Rest.result (jsonWriter : nil) req state)
     # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" acceptJson) : nil)
                                 req state)
     # Rest.yeeha
     where 
           acceptJson req state = do
+             
+            -- Read the whole body, no buffering (how big can a book be??)
             body <- allBody req mempty
+
+            -- read it as JSON, and chuck it into the create function of bookLibrary and obviously this is all
+            -- either (Left/Right) all the way down
             result <- either (pure <<< Left <<< show) BookLibrary.create $ readJSON $ unsafeCoerce body
             case result of
+                 -- The point being that Left -> Failure -> False -> Err as the body
                  Left err -> Rest.result false (setBody err req) state
+
+                 -- And Right -> Success -> True and no body
                  Right c -> Rest.result true req state
                                            
+-- Another rest handler, this time of 'Maybe Book'
+-- This is because we take in an Isbn (Look at that!! It just works thanks to the router)
+-- And try and load the book which may or may not exist
 book :: Isbn -> StetsonHandler (Maybe Book)
 book id = 
   Rest.handler (\req -> do
+                          --  Conveniently typed, and the Maybe  just goes  into state
                           book <- BookLibrary.findByIsbn id
                           Rest.initResult req book)
     # Rest.allowedMethods (\req state -> Rest.result (Stetson.HEAD : Stetson.PUT : Stetson.DELETE : Stetson.GET : Stetson.OPTIONS : nil) req state)
+
+    -- the resourceExists if we have a Just...
     # Rest.resourceExists (\req state -> 
                              Rest.result (isJust state) 
                              (maybe (setBody "This book does not exist" req) (\_ -> req) state)
                              state)
+
+    -- Deletion always succeeds
     # Rest.deleteResource (\req state -> do
                               _ <- maybe (pure unit) (\book -> BookLibrary.delete book.isbn) state
                               Rest.result true req state)
+
+    -- And the same trick as bove, sharing the jsonWriter for dumping the json out over the wire
     # Rest.contentTypesProvided (\req state -> Rest.result (jsonWriter : nil) req state)
     # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" acceptJson) : nil) req state)
     # Rest.yeeha
     where
           acceptJson req state = do
              body <- allBody req mempty
-             result <- either (pure <<< Left <<< show) BookLibrary.update $ readJSON $ unsafeCoerce body
+             result <- either (pure <<< Left <<< show) BookLibrary.update $ readJSON $ binaryToString body
              case result of
                   Left err -> Rest.result false (setBody err req) state
                   Right c -> Rest.result true req state
 
 
+-- We don't need this message type, but 
+-- We may as well define one as it means we can easily add more messages if we want to in the future
 data EventsWsMsg = BookMsg BookEvent
 
+-- This is a receiving  handler, which receives the message  typr defined above, and holds a state of 'Unit'
 eventsWs :: ReceivingStetsonHandler EventsWsMsg Unit
 eventsWs =
 
@@ -119,7 +160,8 @@ eventsWs =
   -- Subscribe to any events here, lift the messages into the right type if necessary
   -- emitter is of type (msg -> Effect Unit), anything passed into that will appear in .info
   # WebSocket.init (\emitter s ->  do
-                              _ <- SimpleBus.subscribe BookLibrary.bus (\ev -> emitter $ BookMsg ev)
+                               -- Subscribe to the bus, and redirect the events into our emitter after wrapping them in our type 
+                              _ <- SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> emitter
                               pure $ Stetson.NoReply s
                              )
 
@@ -175,6 +217,7 @@ eventsFirehoseRest =
                          Rest.switchHandler LoopHandler req2 state)
 
 
+-- And see here how we needed some  more messages
 data DataStreamMessage = Data Binary
                        | DataSourceDied
                        | DataSourceAlreadyDown
@@ -242,6 +285,14 @@ allBody req acc = do
        (PartialData body req2) -> (allBody req2 $ acc <> (fromBinary body))
 
 
-
+-- This is just one of those things that hasn't become painful enough to resolve yet
+-- All strings are binaries
+-- but not all binaries are strings
+-- in theory this unsafeCoerce is therefore a bad thing to be doing
+-- but in Erlang world  we'd have just assumed  it was a binary string anyway
+-- there is no great story around this yet
 stringToBinary :: String -> Binary
 stringToBinary = unsafeCoerce
+
+binaryToString :: Binary -> String
+binaryToString = unsafeCoerce
