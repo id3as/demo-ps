@@ -24,7 +24,9 @@ rebar3 compile
 
 ```
 
-Open a browser to http://localhost:3000, enjoy the contrived example
+- Open a browser to http://localhost:3000, enjoy the most basic experience.
+- curl -v http://localhost:3000/api/stream > /dev/null # Subscribe to a stream (check the logs)
+- curl -v http://localhost:3000/api/events/stream # Stream the events happening on the server as you do things in the UI
 
 Disclaimer
 ==
