@@ -34,25 +34,26 @@ startLink :: BookWatchingStartArgs -> Effect StartLinkResult
 startLink args =
   Gen.buildStartLink serverName (init args) $ Gen.defaultStartLink { handleInfo = handleInfo }
 
-init :: BookWatchingStartArgs -> Effect State
+init :: BookWatchingStartArgs -> Gen.Init State Msg
 init args = do
   -- We can get hold of 'self', which is of type (Process Msg) as defined by serverName
   -- Anything sent to this will appear in our handleInfo (ooh typing)
   -- We can use this in callbacks to get messages back to us of the right type
-  self <- Gen.self serverName 
+  self <- Gen.self
 
   -- Speaking of, SimpleBus.subscribe is such a thing, given a bus name
   -- and an emitter, we'll be given messages of the right type 
-  _ <- SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
+  _ <- Gen.lift $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
 
   pure $ {}
-
-handleInfo :: Msg -> State -> Effect (CastResult State)
+ 
+handleInfo :: Msg -> State -> Gen.HandleInfo State Msg
 handleInfo msg state = do
   case msg of
     -- And that means we can switch over the messages as they come in
     -- All the typing..
-    BookMsg bookEvent -> handleBookEvent bookEvent state
+    BookMsg bookEvent -> 
+      Gen.lift $ handleBookEvent bookEvent state
 
 -- And all we will do is log that we saw the events 
 -- as this demo ends here

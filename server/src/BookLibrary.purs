@@ -48,11 +48,11 @@ serverName = Local $ atom "book_library"
 create :: Book -> Effect (Either String Book)
 create book = 
   Gen.doCall serverName \state@{ connection } -> do
-    existing <- Redis.get (dbId $ book.isbn) connection
+    existing <- Gen.lift $ Redis.get (dbId $ book.isbn) connection
     case existing of
          Nothing -> do
-           Redis.put (dbId $ book.isbn) book connection
-           SimpleBus.raise bus (BookCreated book.isbn)
+           Gen.lift $ Redis.put (dbId $ book.isbn) book connection
+           Gen.lift $ SimpleBus.raise bus (BookCreated book.isbn)
            pure $ CallReply (Right book) state
          Just (gasp :: Book) -> 
            pure $ CallReply (Left "Book with this ISBN already exists") state
@@ -61,37 +61,37 @@ create book =
 update :: Book -> Effect (Either String Book)
 update book = 
   Gen.doCall serverName \state@{ connection } -> do
-    Redis.put (dbId $ book.isbn) book connection
-    SimpleBus.raise bus (BookUpdated book.isbn)
+    Gen.lift $ Redis.put (dbId $ book.isbn) book connection
+    Gen.lift $ SimpleBus.raise bus (BookUpdated book.isbn)
     pure $ CallReply (Right book) state
 
 delete :: Isbn -> Effect Unit
 delete isbn = 
   Gen.doCall serverName \state@{ connection } -> do
-    Redis.delete (dbId isbn) connection
-    SimpleBus.raise bus (BookDeleted isbn)
+    Gen.lift $ Redis.delete (dbId isbn) connection
+    Gen.lift $ SimpleBus.raise bus (BookDeleted isbn)
     pure $ CallReply unit state
 
 findByIsbn :: Isbn -> Effect (Maybe Book)
 findByIsbn isbn = 
   Gen.doCall serverName \state@{ connection } -> do
-    result <- Redis.get (dbId isbn) connection
+    result <- Gen.lift $ Redis.get (dbId isbn) connection
     pure $ CallReply result state
 
 findAll :: Effect (List Book)
 findAll = 
   Gen.doCall serverName \state@{ connection } -> do
-    books <- Redis.findAll dbPrefix connection
+    books <- Gen.lift $ Redis.findAll dbPrefix connection
     pure $ CallReply books state
 
 -- Nothing special about this, just a function that returns a certain type
 -- We can supply arbitrary arguments to this via the gensup
 startLink :: BookLibraryStartArgs -> Effect StartLinkResult
 startLink args =
-  Gen.startLink serverName (init args)
+   Gen.startLink serverName (init args)
 
 -- And those arguments can then end up in here, which just needs to return an effect of our State type
-init :: BookLibraryStartArgs -> Effect State
+init :: BookLibraryStartArgs -> Gen.Init State  Unit
 init args = do
-  connection <- Redis.open args.connectionString
+  connection <- Gen.lift $ Redis.open args.connectionString
   pure $ { connection }

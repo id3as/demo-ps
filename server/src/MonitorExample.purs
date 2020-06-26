@@ -10,6 +10,7 @@ import Data.Either (Either(..))
 import Erl.Data.Binary (Binary(..))
 import Data.Maybe (Maybe(..))
 import Erl.Data.Map as Map
+import Erl.Process (Process)
 import Data.Traversable (traverse)
 import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
@@ -51,30 +52,32 @@ registerClient :: MessageHandler -> Effect Unit
 registerClient handler = do
   handlerPid <- self
   Gen.doCall serverName \state -> do
-     newState <- addHandler handler handlerPid  state
+     self <- Gen.self
+     newState <- Gen.lift $ addHandler handler self handlerPid state
      pure $ CallReply unit newState
 
-init :: BookWatchingStartArgs -> Effect State
+init :: BookWatchingStartArgs -> Gen.Init State Msg
 init args = do
-  void $ Timer.sendAfter 500 Tick =<< Gen.self serverName
+  self <- Gen.self
+  void $ Gen.lift $ Timer.sendAfter 500 Tick self
   pure $ {
     handlers: Map.empty
   }
 
-handleInfo :: Msg -> State -> Effect (CastResult State)
+handleInfo :: Msg -> State -> Gen.HandleInfo State Msg
 handleInfo msg state@{ handlers  } = do
   case msg of
      ClientDisconnected handlerPid -> do
-        void $ Logger.info1 "Removing ~p as it disconnected" handlerPid
+        void $ Gen.lift $ Logger.info1 "Removing ~p as it disconnected" handlerPid
         pure $ CastNoReply $ state { handlers = Map.delete handlerPid handlers }
      Tick -> do
-        sendData handlers
-        void $ Timer.sendAfter 500 Tick =<< Gen.self serverName
+        Gen.lift $ sendData handlers
+        self <- Gen.self
+        void $ Gen.lift $ Timer.sendAfter 500 Tick self
         pure $ CastNoReply $ state 
 
-addHandler :: MessageHandler -> Pid -> State -> Effect State
-addHandler handler handlerPid state@{ handlers } = do
-  self <- Gen.self serverName
+addHandler :: MessageHandler -> Process Msg -> Pid -> State -> Effect State
+addHandler handler self handlerPid state@{ handlers } = do
   void $ Logger.info1 "Adding handler ~p as it has connected" handlerPid
   void $ Monitor.pid handlerPid (\_ -> self ! ClientDisconnected handlerPid)
   pure $ state { handlers = Map.insert handlerPid handler handlers }

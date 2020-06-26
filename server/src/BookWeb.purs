@@ -49,11 +49,12 @@ startLink :: BookWebStartArgs -> Effect StartLinkResult
 startLink args =
   Gen.startLink serverName (init args) 
 
-init :: BookWebStartArgs -> Effect State
+init :: BookWebStartArgs -> Gen.Init State Unit
 init args = do
   -- This is pretty self explanatory, Stetson.configure kicks off 
   -- the process and then we can tweak that object by pipng it through
-  _ <- Stetson.configure
+  _ <- Gen.lift $ 
+    Stetson.configure
     # Stetson.routes 
       -- These routes are defined in a typed object
       -- that dictate 
