@@ -4,6 +4,7 @@ import Prelude
 
 import Books (Book,  Isbn, BookEvent(..))
 import Erl.Process.Raw (Pid)
+import Erl.Process ((!))
 import Erl.Atom (atom)
 import Data.Either (Either(..))
 import Erl.Data.Binary (Binary(..))
@@ -55,7 +56,7 @@ registerClient handler = do
 
 init :: BookWatchingStartArgs -> Effect State
 init args = do
-  void $ Timer.sendAfter 500 Tick =<< Gen.emitter serverName
+  void $ Timer.sendAfter 500 Tick =<< Gen.self serverName
   pure $ {
     handlers: Map.empty
   }
@@ -68,14 +69,14 @@ handleInfo msg state@{ handlers  } = do
         pure $ CastNoReply $ state { handlers = Map.delete handlerPid handlers }
      Tick -> do
         sendData handlers
-        void $ Timer.sendAfter 500 Tick =<< Gen.emitter serverName
+        void $ Timer.sendAfter 500 Tick =<< Gen.self serverName
         pure $ CastNoReply $ state 
 
 addHandler :: MessageHandler -> Pid -> State -> Effect State
 addHandler handler handlerPid state@{ handlers } = do
-  emitter <- Gen.emitter serverName
+  self <- Gen.self serverName
   void $ Logger.info1 "Adding handler ~p as it has connected" handlerPid
-  void $ Monitor.monitor handlerPid (\_ -> emitter $ ClientDisconnected handlerPid)
+  void $ Monitor.pid handlerPid (\_ -> self ! ClientDisconnected handlerPid)
   pure $ state { handlers = Map.insert handlerPid handler handlers }
 
 

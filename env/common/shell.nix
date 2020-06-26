@@ -39,7 +39,6 @@ mkShell {
     nixerl.erlang-22-3.rebar3
 
     purerl.purerl-0-0-5
-    psc-package
 
     demo_ps.purescript-0-13-6
     demo_ps.spago-0-12-1-0

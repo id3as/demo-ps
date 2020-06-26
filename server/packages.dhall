@@ -10,13 +10,13 @@ let overrides =
       erl-pinto =
           { dependencies = [ "erl-process" ]
           , repo = "ssh://git@github.com/id3as/purescript-erl-pinto.git"
-          , version = "59fd04bb0215f532b984909b3cd52bbaf1c10e6a"
+          , version = "fdf18b1e8febb9ff0b8a9ada0eff7fd9de9cad6e"
           },
 
       erl-stetson =
           { dependencies = ["erl-atom" , "erl-binary" , "erl-lists" , "erl-maps" , "erl-tuples" , "erl-modules" , "foreign" , "maybe" , "prelude" , "transformers" , "routing-duplex"]
           , repo = "ssh://git@github.com/id3as/purescript-erl-stetson.git"
-          , version = "2244181d4905c16f7a62ead62a12a2056eb0c975"
+          , version = "d584315bb669cd2a6b190e5dbcc193522406f15f"
           }
       }
 
@@ -27,7 +27,7 @@ let extras = {
               , "effect"
               ]
           , repo = "ssh://git@github.com/id3as/purescript-erl-simplebus.git"
-          , version = "14b5bd5971e7f2eeba99b51f1c6d4f43761b5376"
+          , version = "499883e219c9d828ad67cb68726c8e8c4335ff7b"
           }
   }
 

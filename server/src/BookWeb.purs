@@ -15,6 +15,7 @@ import Data.Maybe (Maybe(..), isJust, maybe)
 import Effect (Effect)
 import Erl.Atom (atom)
 import Erl.Data.Map as Map
+import Erl.Process (send)
 import Erl.Cowboy.Req (ReadBodyResult(..), Req, binding, readBody, setBody, streamReply, streamBody, StatusCode(..) )
 import Erl.Data.Binary (Binary)
 import Erl.Cowboy.Handlers.WebSocket (Frame(..))
@@ -24,7 +25,7 @@ import Erl.Data.Tuple (Tuple2, tuple2)
 import Pinto (ServerName(..), StartLinkResult)
 import Pinto.Gen as Gen
 import Simple.JSON (class WriteForeign, readJSON, writeJSON)
-import Stetson (RestResult, StaticAssetLocation(..), StetsonHandler, ReceivingStetsonHandler, emptyHandler, CowboyHandler(..), LoopCallResult(..))
+import Stetson (RestResult, StaticAssetLocation(..), SimpleStetsonHandler, StetsonHandler,  emptyHandler, CowboyHandler(..), LoopCallResult(..))
 import Stetson as Stetson
 import Stetson.Rest as Rest
 import Stetson.Loop as Loop
@@ -75,7 +76,7 @@ init args = do
   pure $ State {}
 
 -- A plain ol' Handler that operates over a state of type 'List Book'
-books :: StetsonHandler (List Book)
+books :: SimpleStetsonHandler (List Book)
 books =
   -- We kick it off from the Rest namespace, so this is effectively cowboy_rest
   Rest.handler (\req -> do
@@ -94,7 +95,6 @@ books =
     # Rest.contentTypesProvided (\req state -> Rest.result (jsonWriter : nil) req state)
     # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" acceptJson) : nil)
                                 req state)
-    # Rest.yeeha
     where 
           acceptJson req state = do
              
@@ -114,7 +114,7 @@ books =
 -- Another rest handler, this time of 'Maybe Book'
 -- This is because we take in an Isbn (Look at that!! It just works thanks to the router)
 -- And try and load the book which may or may not exist
-book :: Isbn -> StetsonHandler (Maybe Book)
+book :: Isbn -> SimpleStetsonHandler (Maybe Book)
 book id = 
   Rest.handler (\req -> do
                           --  Conveniently typed, and the Maybe  just goes  into state
@@ -136,7 +136,6 @@ book id =
     -- And the same trick as bove, sharing the jsonWriter for dumping the json out over the wire
     # Rest.contentTypesProvided (\req state -> Rest.result (jsonWriter : nil) req state)
     # Rest.contentTypesAccepted (\req state -> Rest.result ((tuple2 "application/json" acceptJson) : nil) req state)
-    # Rest.yeeha
     where
           acceptJson req state = do
              body <- allBody req mempty
@@ -151,7 +150,7 @@ book id =
 data EventsWsMsg = BookMsg BookEvent
 
 -- This is a receiving  handler, which receives the message  typr defined above, and holds a state of 'Unit'
-eventsWs :: ReceivingStetsonHandler EventsWsMsg Unit
+eventsWs :: StetsonHandler EventsWsMsg Unit
 eventsWs =
 
   -- Pull your bindings out of req here and create an initial state
@@ -159,9 +158,13 @@ eventsWs =
 
   -- Subscribe to any events here, lift the messages into the right type if necessary
   -- emitter is of type (msg -> Effect Unit), anything passed into that will appear in .info
-  # WebSocket.init (\emitter s ->  do
+  # WebSocket.init (\s ->  do
+                              -- Get our pid
+                              self <- WebSocket.self
+
                                -- Subscribe to the bus, and redirect the events into our emitter after wrapping them in our type 
-                              _ <- SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> emitter
+                              _ <- WebSocket.lift $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
+
                               pure $ Stetson.NoReply s
                              )
 
@@ -171,12 +174,9 @@ eventsWs =
   -- Receives messages that were sent into 'emitter', typically so they can then be 'Replied' into the websocket
   # WebSocket.info (\(BookMsg msg) state -> pure $ Stetson.Reply ((TextFrame $ writeJSON msg) : nil) state)
 
-  -- Yeeaha
-  # WebSocket.yeeha
-
 -- This is a handler that starts off being a RestHandler
 -- but then switches into a LoopHandler for streaming the data once Conneg has taken place
-eventsFirehoseRest :: ReceivingStetsonHandler EventsWsMsg Unit
+eventsFirehoseRest :: StetsonHandler EventsWsMsg Unit
 eventsFirehoseRest =
   -- So empty handler that returns a Rest.initResult
   emptyHandler (\req -> Rest.initResult req unit)
@@ -190,23 +190,27 @@ eventsFirehoseRest =
 
     -- Once we've switched to the Loop handler, we'll be given a chance to register
     -- any callbacks with the emitter for this handler
-    # Loop.init (\emitter req state -> do
-                                
+    # Loop.init (\req state -> do
+
+                              -- Get 'self' out of the state monad!!!!!!!!
+                              self <- Loop.self
+
                               -- In this case, we'll subscribe to the bus and throw any messages it sends us 
-                              -- into BookMsg
-                              _ <- SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> emitter
+                              -- into Book Msg
+                              -- We do need to lift the effect into our StateT tho
+                              _ <- Loop.lift $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
+
                               pure state)
 
     -- And then those messages will appear here so we can
     # Loop.info (\(BookMsg msg) req state ->  do
 
           -- Stream them to the client as we get them
-          _ <- streamBody (stringToBinary $ writeJSON msg) req
+          _ <- Loop.lift $ streamBody (stringToBinary $ writeJSON msg) req
           
           -- And keep on loopin'
           pure $ LoopOk req state)
 
-    # Loop.yeeha
     where 
           -- So we provide application/json, and if they choose to take that then
           -- we'll call streamReply on Cowboy to let it know that's what we're doing
@@ -224,7 +228,7 @@ data DataStreamMessage = Data Binary
                         
                                            
 -- This is a handler analogous to cowboy_loop
-dataStream :: ReceivingStetsonHandler DataStreamMessage Unit
+dataStream :: StetsonHandler DataStreamMessage Unit
 dataStream =
   Loop.handler (\req -> do
 
@@ -236,18 +240,21 @@ dataStream =
 
     -- Now we've decided to be a loop handler, we'll be given the emitter
     -- into which we can pass messages that'll appear in 'info'
-    # Loop.init (\emitter req state -> do 
-                                        
-                                        -- We'll register our emitter with the gen server
-                                        -- It can then send us messages
-                                        void $ MonitorExample.registerClient $ emitter <<< Data
+    # Loop.init (\req state -> do 
+ 
+                      -- Get our typed pid
+                      self <- Loop.self
 
-                                        -- But we'll also add a monitor to that gen server so we know if it dies
-                                        -- There are two messages here, we could just use the same one but I want the example to be clear
-                                        void $ Gen.monitor MonitorExample.serverName (\_ -> emitter DataSourceDied) (emitter DataSourceAlreadyDown)
+                      -- We'll register our emitter with the gen server
+                      -- It can then send us messages
+                      void $ Loop.lift $  MonitorExample.registerClient $ send self <<< Data
 
-                                        -- And carry on
-                                        pure unit)
+                      -- But we'll also add a monitor to that gen server so we know if it dies
+                      -- There are two messages here, we could just use the same one but I want the example to be clear
+                      void $ Loop.lift $ Gen.monitor MonitorExample.serverName (\_ -> send self DataSourceDied) (send self DataSourceAlreadyDown)
+
+                      -- And carry on
+                      pure unit)
 
     -- If we receive a message from the gen server
     # Loop.info (\msg req state ->  do
@@ -255,7 +262,7 @@ dataStream =
                      Data binary -> do
 
                         -- Then stream that down to the client
-                        _ <- streamBody binary req
+                        _ <- Loop.lift $ streamBody binary req
 
                         -- And LoopOk cos we'll wait for the next message
                         pure $ LoopOk req state
@@ -271,7 +278,6 @@ dataStream =
                        pure $ LoopStop req state
                  )
 
-    # Loop.yeeha
 
 
 jsonWriter :: forall a. WriteForeign a => Tuple2 String (Req -> a -> (Effect (RestResult String a)))

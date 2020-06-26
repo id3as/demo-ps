@@ -10,6 +10,7 @@ import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
 import Erl.Data.List (List)
 import Pinto (ServerName(..), StartLinkResult)
+import Erl.Process ((!), send)
 import Pinto.Gen (CallResult(..), CastResult(..))
 import Pinto.Gen as Gen
 import Books (Book, Isbn)
@@ -35,14 +36,15 @@ startLink args =
 
 init :: BookWatchingStartArgs -> Effect State
 init args = do
-  -- We can get hold  of an emitter, which is of type (Msg -> Effect Unit) as defined bby serverName
-  -- Anything passed  into this will appear in our handleInfo (ooh typing)
-  -- And thus this emitter can be passed into any process that wishes to send us messages
-  emitter <- Gen.emitter serverName 
+  -- We can get hold of 'self', which is of type (Process Msg) as defined by serverName
+  -- Anything sent to this will appear in our handleInfo (ooh typing)
+  -- We can use this in callbacks to get messages back to us of the right type
+  self <- Gen.self serverName 
 
   -- Speaking of, SimpleBus.subscribe is such a thing, given a bus name
   -- and an emitter, we'll be given messages of the right type 
-  _ <- SimpleBus.subscribe BookLibrary.bus $ emitter <<< BookMsg
+  _ <- SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
+
   pure $ {}
 
 handleInfo :: Msg -> State -> Effect (CastResult State)
