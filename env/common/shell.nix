@@ -16,13 +16,20 @@ let
       rev = "5da0a433bcefe607e0bd182b79b220af980a4c78";
     };
 
+  supportPackages =
+    builtins.fetchGit {
+      name = "purerl-support-packages";
+      url = "git@github.com:id3as/nixpkgs-purerl-support.git";
+      rev = "2299658a78f2827e3844084861ae4fa88dcddd8b";
+    };
+
 
   nixpkgs =
     import pinnedNix {
       overlays = [
         (import erlangReleases)
         (import pursPackages)
-        (import ./.)
+        (import supportPackages)
       ];
     };
 
@@ -40,8 +47,8 @@ mkShell {
 
     purerl.purerl-0-0-5
 
-    demo_ps.purescript-0-13-6
-    demo_ps.spago-0-12-1-0
-    demo_ps.dhall-json-1-5-0
+    purerl-support.purescript-0-13-6
+    purerl-support.spago-0-12-1-0
+    purerl-support.dhall-json-1-5-0
    ];
 }

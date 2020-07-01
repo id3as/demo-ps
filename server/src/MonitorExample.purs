@@ -15,7 +15,8 @@ import Data.Traversable (traverse)
 import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
 import Erl.Data.List (List)
-import Pinto (ServerName(..), StartLinkResult, self)
+import Pinto as Pinto
+import Pinto (ServerName(..), StartLinkResult)
 import Pinto.Gen (CallResult(..), CastResult(..))
 import Pinto.Gen as Gen
 import Pinto.Timer as Timer
@@ -27,19 +28,19 @@ import SimpleBus as SimpleBus
 import BookLibrary as BookLibrary
 import Logger as Logger
 
-type MessageHandler = (Binary -> Effect Unit)
-type BookWatchingStartArgs = {}
 
 foreign import getDataFromSomeNativeCode :: Effect Binary
-
 
 type State = {
   handlers :: Map.Map Pid MessageHandler
 }
 
+type MessageHandler = (Binary -> Effect Unit)
+
 data Msg = ClientDisconnected Pid
          | Tick
   
+type BookWatchingStartArgs = {}
 
 serverName :: ServerName State Msg
 serverName = Local $ atom "monitor_example"
@@ -48,14 +49,6 @@ startLink :: BookWatchingStartArgs -> Effect StartLinkResult
 startLink args =
   Gen.buildStartLink serverName (init args) $ Gen.defaultStartLink { handleInfo = handleInfo }
 
-registerClient :: MessageHandler -> Effect Unit
-registerClient handler = do
-  handlerPid <- self
-  Gen.doCall serverName \state -> do
-     self <- Gen.self
-     newState <- Gen.lift $ addHandler handler self handlerPid state
-     pure $ CallReply unit newState
-
 init :: BookWatchingStartArgs -> Gen.Init State Msg
 init args = do
   self <- Gen.self
@@ -63,6 +56,14 @@ init args = do
   pure $ {
     handlers: Map.empty
   }
+
+registerClient :: MessageHandler -> Effect Unit
+registerClient handler = do
+  handlerPid <- Pinto.self
+  Gen.doCall serverName \state -> do
+     self <- Gen.self
+     newState <- Gen.lift $ addHandler handler self handlerPid state
+     pure $ CallReply unit newState
 
 handleInfo :: Msg -> State -> Gen.HandleInfo State Msg
 handleInfo msg state@{ handlers  } = do

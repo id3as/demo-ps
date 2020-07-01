@@ -10,7 +10,7 @@ let overrides =
       erl-pinto =
           { dependencies = [ "erl-process" ]
           , repo = "ssh://git@github.com/id3as/purescript-erl-pinto.git"
-          , version = "60dc079f3f75e9ef3c6498df9ce9bfc3206cd81b"
+          , version = "6afd130e39a1d1b0c2ee9bc5e93388b739e7e993"
           },
 
       erl-stetson =
