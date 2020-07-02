@@ -5388,7 +5388,7 @@ var PS = {};
   var Simple_JSON = $PS["Simple.JSON"];                
   var Isbn = function (x) {
       return x;
-  };
+  };   
   var writeIsbnId = Simple_JSON.writeForeignString;
   var readIsbnId = Simple_JSON.readString;
   var ntIsbnId = new Data_Newtype.Newtype(function (n) {
