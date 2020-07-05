@@ -33,8 +33,6 @@ let
       ];
     };
 
-  inherit (nixpkgs.stdenv.lib) optionals;
-  inherit (nixpkgs)stdenv;
 in
 
 with nixpkgs;

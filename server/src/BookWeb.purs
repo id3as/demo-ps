@@ -15,7 +15,7 @@ import Data.Maybe (Maybe(..), isJust, maybe)
 import Effect (Effect)
 import Erl.Atom (atom)
 import Erl.Data.Map as Map
-import Erl.Process (send)
+import Erl.Process (send, Process(..))
 import Erl.Cowboy.Req (ReadBodyResult(..), Req, binding, readBody, setBody, streamReply, streamBody, StatusCode(..) )
 import Erl.Data.Binary (Binary)
 import Erl.Cowboy.Handlers.WebSocket (Frame(..))
@@ -30,6 +30,7 @@ import Stetson as Stetson
 import Stetson.Rest as Rest
 import Stetson.Loop as Loop
 import Stetson.WebSocket as WebSocket
+import OneForOneSup as OneForOneSup
 import Unsafe.Coerce (unsafeCoerce)
 import Routes as Routes
 import SimpleBus as SimpleBus
@@ -67,6 +68,7 @@ init args = do
         , "EventsWs": eventsWs
         , "EventsFirehoseRest": eventsFirehoseRest
         , "DataStream": dataStream
+        , "OneForOne": oneForOne
         , "Assets": PrivDir "demo_ps" "www/assets"
         , "Index": PrivFile "demo_ps" "www/index.html"
         , "Index2": (\(_ :: String)  -> PrivFile "demo_ps" "www/index.html")
@@ -279,6 +281,44 @@ dataStream =
                        pure $ LoopStop req state
                  )
 
+
+data OneForOneMessage = OfOData Binary
+
+oneForOne :: StetsonHandler OneForOneMessage Unit
+oneForOne =
+  Loop.handler (\req -> do
+
+               -- Start off by initting the streamed  response, no headers, lazy
+               req2 <- streamReply (StatusCode 200) Map.empty req
+
+               -- And return the Loop handler
+               Loop.initResult req2 unit)
+
+    -- Now we've decided to be a loop handler, we'll be given the emitter
+    -- into which we can pass messages that'll appear in 'info'
+    # Loop.init (\req state -> do 
+ 
+                      -- Get our typed pid
+                      self@( Process pid ) <- Loop.self
+
+                      -- We'll register our emitter with the gen server
+                      -- It can then send us messages
+                      void $ Loop.lift $ OneForOneSup.startClient { handler: send self <<< OfOData, clientPid: pid }
+
+                      -- And carry on
+                      pure unit)
+
+    -- If we receive a message from the gen server
+    # Loop.info (\msg req state ->  do
+                case msg of
+                     OfOData binary -> do
+
+                        -- Then stream that down to the client
+                        _ <- Loop.lift $ streamBody binary req
+
+                        -- And LoopOk cos we'll wait for the next message
+                        pure $ LoopOk req state
+                 )
 
 
 jsonWriter :: forall a. WriteForeign a => Tuple2 String (Req -> a -> (Effect (RestResult String a)))

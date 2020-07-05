@@ -11,6 +11,8 @@ import BookLibrary as BookLibrary
 import BookConfig as BookConfig
 import HandleInfoExample as HandleInfoExample
 import MonitorExample as MonitorExample
+import EmptyGenServer as EmptyGenServer
+import OneForOneSup as OneForOneSup
 import Pinto as Pinto
 import Pinto.Sup (SupervisorChildRestart(..), SupervisorChildShutdown(..), SupervisorChildType(..), SupervisorSpec, SupervisorStrategy(..), buildChild, buildSupervisor, childId, childRestart, childShutdown, childStart, childStartTemplate, childType, supervisorChildren, supervisorIntensity, supervisorPeriod, supervisorStrategy)
 import Pinto.Sup as Sup
@@ -19,7 +21,7 @@ serverName :: Pinto.SupervisorName
 serverName = (Pinto.Local $ atom "book_sup")
 
 startLink :: Effect Pinto.StartLinkResult
-startLink = Sup.startLink serverName  init
+startLink = Sup.startLink serverName init
 
 init :: Effect SupervisorSpec
 init = do
@@ -36,6 +38,11 @@ init = do
                                        : 
                                        ( buildChild
                                        # childType Worker
+                                       # childId "empty_server"
+                                       # childStart EmptyGenServer.startLink  {} )
+                                       :
+                                       ( buildChild
+                                       # childType Worker
                                        # childId "book_library"
                                        # childStart BookLibrary.startLink { connectionString } )
                                        : 
@@ -48,4 +55,9 @@ init = do
                                        # childType Worker
                                        # childId "monitor_example"
                                        # childStart MonitorExample.startLink {} )
+                                       :
+                                       ( buildChild
+                                       # childType Supervisor
+                                       # childId "one_for_one_example"
+                                       # childStart OneForOneSup.startLink unit )
                                         : nil)

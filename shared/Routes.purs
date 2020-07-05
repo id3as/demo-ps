@@ -21,6 +21,7 @@ data Route
   | EventsWs
   | EventsFirehoseRest
   | DataStream
+  | OneForOne
   | Index
   | Index2 String (Array String)
 
@@ -48,6 +49,7 @@ apiRoute = path "" $ sum
   , "EventsWs": "api" / "events" / "ws" / noArgs
   , "EventsFirehoseRest": "api" / "events" / "stream" / noArgs
   , "DataStream": "api" / "stream" / noArgs
+  , "OneForOne": "api" / "one_for_one" / noArgs
   , "Assets" : "assets" / rest
   , "Index" : noArgs
   , "Index2" : segmentExcept "api" / rest
