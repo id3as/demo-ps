@@ -3,12 +3,12 @@ module HandleInfoExample where
 import Prelude
 
 import Books (Book,  Isbn, BookEvent(..))
-import Erl.Atom (atom)
+import Erl.Atom (atom, Atom)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
-import Erl.Data.List (List)
+import Erl.Data.List (List, (:), nil)
 import Pinto (ServerName(..), StartLinkResult)
 import Erl.Process ((!), send)
 import Pinto.Gen (CallResult(..), CastResult(..))
@@ -61,13 +61,18 @@ handleBookEvent :: BookEvent -> State -> Effect (CastResult State)
 handleBookEvent ev state =
   case ev of
     BookCreated isbn -> do
-      _ <- Logger.info1 "Book created ~p" isbn
+      _ <- logInfo "Book created" isbn
       pure $ CastNoReply state
     BookDeleted isbn -> do
-      _ <- Logger.info1 "Book deleted ~p" isbn
+      _ <- logInfo "Book deleted" isbn
       pure $ CastNoReply state
     BookUpdated isbn -> do
-      _ <- Logger.info1 "Book updated ~p" isbn
+      _ <- logInfo "Book updated" isbn
       pure $ CastNoReply state
 
+domain :: List Atom
+domain = (atom "demo_ps") : (atom "handle_info_example") : nil
+
+logInfo :: String -> Isbn -> Effect Unit
+logInfo text isbn = Logger.info { domain, text, isbn, type: Logger.Trace } {}
 

@@ -28,6 +28,13 @@ let extras = {
               ]
           , repo = "ssh://git@github.com/id3as/purescript-erl-simplebus.git"
           , version = "499883e219c9d828ad67cb68726c8e8c4335ff7b"
+          },
+       erl-logger =
+          { dependencies =
+              [ "record"
+              ]
+          , repo = "ssh://git@github.com/id3as/purescript-erl-logger.git"
+          , version = "4966aba0f7a3579c1ff8646f0fb6747d49c241a7"
           }
   }
 

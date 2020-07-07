@@ -5,7 +5,7 @@ import Prelude
 import Books (Book,  Isbn, BookEvent(..))
 import Erl.Process.Raw (Pid)
 import Erl.Process ((!))
-import Erl.Atom (atom)
+import Erl.Atom (atom, Atom)
 import Data.Either (Either(..))
 import Erl.Data.Binary (Binary(..))
 import Data.Maybe (Maybe(..))
@@ -14,7 +14,7 @@ import Erl.Process (Process)
 import Data.Traversable (traverse)
 import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
-import Erl.Data.List (List)
+import Erl.Data.List (List, (:), nil)
 import Pinto as Pinto
 import Pinto (ServerName(..), StartLinkResult)
 import Pinto.Gen (CallResult(..), CastResult(..))
@@ -69,7 +69,7 @@ handleInfo :: Msg -> State -> Gen.HandleInfo State Msg
 handleInfo msg state@{ handlers  } = do
   case msg of
      ClientDisconnected handlerPid -> do
-        void $ Gen.lift $ Logger.info1 "Removing ~p as it disconnected" handlerPid
+        void $ Gen.lift $ logInfo "Removing as it disconnected" handlerPid
         pure $ CastNoReply $ state { handlers = Map.delete handlerPid handlers }
      Tick -> do
         Gen.lift $ sendData handlers
@@ -79,7 +79,7 @@ handleInfo msg state@{ handlers  } = do
 
 addHandler :: MessageHandler -> Process Msg -> Pid -> State -> Effect State
 addHandler handler self handlerPid state@{ handlers } = do
-  void $ Logger.info1 "Adding handler ~p as it has connected" handlerPid
+  void $ logInfo "Adding handler as it has connected" handlerPid
   void $ Monitor.pid handlerPid (\_ -> self ! ClientDisconnected handlerPid)
   pure $ state { handlers = Map.insert handlerPid handler handlers }
 
@@ -89,3 +89,9 @@ sendData handlers = do
   freshData <- getDataFromSomeNativeCode
   void $ traverse (\handler -> do handler freshData) $ Map.values handlers 
   pure unit
+
+domain :: List Atom
+domain = (atom "demo_ps") : (atom "monitor_example") : nil
+
+logInfo :: String -> Pid -> Effect Unit
+logInfo text pid = Logger.info { domain, text, pid, type: Logger.Trace } {}

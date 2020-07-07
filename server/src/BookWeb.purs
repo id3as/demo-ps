@@ -34,7 +34,6 @@ import OneForOneSup as OneForOneSup
 import Unsafe.Coerce (unsafeCoerce)
 import Routes as Routes
 import SimpleBus as SimpleBus
-import Logger as Logger
 import MonitorExample as MonitorExample
 
 newtype State = State {}
