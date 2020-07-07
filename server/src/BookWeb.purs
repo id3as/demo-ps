@@ -60,7 +60,7 @@ init args = do
       -- These routes are defined in a typed object
       -- that dictate 
       -- a) What paths to reach them on
-      -- b) What arguments they expect (typed(!!))
+      -- b) What arguments they expect (typed(!!))kjh
       -- So the callbacks to these names are typed and can be referred to in shared/Routes.purs
       Routes.apiRoute {
           "Book": book
@@ -254,10 +254,7 @@ dataStream =
 
                       -- But we'll also add a monitor to that gen server so we know if it dies
                       -- There are two messages here, we could just use the same one but I want the example to be clear
-                      void $ Loop.lift $ Gen.monitor MonitorExample.serverName (\_ -> send self DataSourceDied) (send self DataSourceAlreadyDown)
-
-                      -- And carry on
-                      pure unit)
+                      void $ Loop.lift $ Gen.monitor MonitorExample.serverName (\_ -> send self DataSourceDied) (send self DataSourceAlreadyDown))
 
     -- If we receive a message from the gen server
     # Loop.info (\msg req state ->  do
@@ -306,7 +303,7 @@ oneForOne =
                       void $ Loop.lift $ OneForOneSup.startClient { handler: send self <<< OfOData, clientPid: pid }
 
                       -- And carry on
-                      pure unit)
+                      pure state)
 
     -- If we receive a message from the gen server
     # Loop.info (\msg req state ->  do

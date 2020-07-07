@@ -29,8 +29,8 @@ init args = do
 
 current :: Effect Int
 current = 
-  Gen.doCall serverName (\s -> pure $ Gen.CallReply s.value s)
+  Gen.call serverName (\s -> pure $ Gen.CallReply s.value s)
 
 add :: Int -> Effect Unit
 add a = 
-  Gen.doCast serverName (\s@{ value  } -> pure $ Gen.CastNoReply s { value = value + a } )
+  Gen.cast serverName (\s@{ value  } -> pure $ Gen.CastNoReply s { value = value + a } )

@@ -47,7 +47,7 @@ serverName = Local $ atom "book_library"
 -- And we can call into it and do things with its state (also available is cast, and pure versions of these calls
 create :: Book -> Effect (Either String Book)
 create book = 
-  Gen.doCall serverName \state@{ connection } -> do
+  Gen.call serverName \state@{ connection } -> do
     existing <- Gen.lift $ Redis.get (dbId $ book.isbn) connection
     case existing of
          Nothing -> do
@@ -60,27 +60,27 @@ create book =
 
 update :: Book -> Effect (Either String Book)
 update book = 
-  Gen.doCall serverName \state@{ connection } -> do
+  Gen.call serverName \state@{ connection } -> do
     Gen.lift $ Redis.put (dbId $ book.isbn) book connection
     Gen.lift $ SimpleBus.raise bus (BookUpdated book.isbn)
     pure $ CallReply (Right book) state
 
 delete :: Isbn -> Effect Unit
 delete isbn = 
-  Gen.doCall serverName \state@{ connection } -> do
+  Gen.call serverName \state@{ connection } -> do
     Gen.lift $ Redis.delete (dbId isbn) connection
     Gen.lift $ SimpleBus.raise bus (BookDeleted isbn)
     pure $ CallReply unit state
 
 findByIsbn :: Isbn -> Effect (Maybe Book)
 findByIsbn isbn = 
-  Gen.doCall serverName \state@{ connection } -> do
+  Gen.call serverName \state@{ connection } -> do
     result <- Gen.lift $ Redis.get (dbId isbn) connection
     pure $ CallReply result state
 
 findAll :: Effect (List Book)
 findAll = 
-  Gen.doCall serverName \state@{ connection } -> do
+  Gen.call serverName \state@{ connection } -> do
     books <- Gen.lift $ Redis.findAll dbPrefix connection
     pure $ CallReply books state
 

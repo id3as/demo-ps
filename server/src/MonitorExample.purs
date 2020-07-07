@@ -60,7 +60,7 @@ init args = do
 registerClient :: MessageHandler -> Effect Unit
 registerClient handler = do
   handlerPid <- Pinto.self
-  Gen.doCall serverName \state -> do
+  Gen.call serverName \state -> do
      self <- Gen.self
      newState <- Gen.lift $ addHandler handler self handlerPid state
      pure $ CallReply unit newState
