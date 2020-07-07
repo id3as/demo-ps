@@ -13,7 +13,7 @@ let
     builtins.fetchGit {
       name = "purerl-packages";
       url = "git@github.com:purerl/nixpkgs-purerl.git";
-      rev = "5da0a433bcefe607e0bd182b79b220af980a4c78";
+      rev = "547e2ef774c69d33c7fcb5cd140e50c936681846";
     };
 
   supportPackages =
@@ -42,7 +42,7 @@ mkShell {
     nixerl.erlang-22-3.erlang
     nixerl.erlang-22-3.rebar3
 
-    purerl.purerl-0-0-5
+    purerl.purerl-0-0-6
 
     purerl-support.purescript-0-13-6
     purerl-support.spago-0-12-1-0
