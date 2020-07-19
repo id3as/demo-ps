@@ -20,7 +20,7 @@ let
     builtins.fetchGit {
       name = "purerl-support-packages";
       url = "git@github.com:id3as/nixpkgs-purerl-support.git";
-      rev = "2299658a78f2827e3844084861ae4fa88dcddd8b";
+      rev = "c9a9140db5112e74030763292dc93de25adb3482";
     };
 
 
@@ -30,7 +30,6 @@ let
         (import erlangReleases)
         (import pursPackages)
         (import supportPackages)
-        (import ./local.nix)
       ];
     };
 
@@ -47,8 +46,7 @@ mkShell {
 
     purerl.purerl-0-0-6
 
-    local.erlang_ls
-
+    purerl-support.erlang_ls-0-4-1
     purerl-support.purescript-0-13-6
     purerl-support.spago-0-12-1-0
     purerl-support.dhall-json-1-5-0
