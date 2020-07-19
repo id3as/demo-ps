@@ -1,12 +1,11 @@
 -module(bookConfig@foreign).
 
--export([
-         readInt_/1,
-         readString_/1,
-         readDirect_/1
+-export([ readInt_/1
+        , readString_/1
+        , readDirect_/1
         ]).
 
-%% Case statements are just so we can take env vars as well as sys.config values
+%% Case statements are just so we can take env vars as well as sys.config value
 readDirect_(Name) -> fun() ->
                       get_config_value(binary_to_atom(Name, utf8))
                      end.

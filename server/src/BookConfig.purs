@@ -12,8 +12,8 @@ foreign import readDirect_ :: forall a. String -> Effect a
 
 connectionString :: Effect ConnectionString
 connectionString =
-  readDirect_ "connection_string" 
+  readDirect_ "connection_string"
 
 webPort :: Effect Int
 webPort =
-  readInt_ "web_port" 
+  readInt_ "web_port"

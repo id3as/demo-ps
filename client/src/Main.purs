@@ -45,11 +45,11 @@ _bookDelete = SProxy
 data Query a
   = Global GlobalMessage a
 
-data Action = 
-  Initialize 
-  | Tick 
-  | RaiseGlobal GlobalMessage 
-  | SwitchRoute Event Route 
+data Action =
+  Initialize
+  | Tick
+  | RaiseGlobal GlobalMessage
+  | SwitchRoute Event Route
 
 type State = {
   activeRoute :: Route
@@ -72,28 +72,28 @@ component =
 
   render :: State -> H.ComponentHTML Action ChildSlots Aff
   render ({ activeRoute }) =
-    HH.div_ 
-    [ HH.nav [ HP.classes [ B.navbar, B.navbarDark, B.fixedTop, B.bgDark, B.p0, B.shadow ] ] 
+    HH.div_
+    [ HH.nav [ HP.classes [ B.navbar, B.navbarDark, B.fixedTop, B.bgDark, B.p0, B.shadow ] ]
       [ HH.a [ HP.classes [ B.navbarBrand, B.colSm3, B.colMd2, B.mr0 ], HP.href "#" ] [ HH.text "id3as" ]
-      , HH.ul [ HP.classes [ B.navbarNav, B.px3 ] ] 
-        [ HH.li [ HP.classes [ B.navItem, B.textNowrap ] ] 
+      , HH.ul [ HP.classes [ B.navbarNav, B.px3 ] ]
+        [ HH.li [ HP.classes [ B.navItem, B.textNowrap ] ]
           [ HH.a [ HP.classes [ B.navLink ], HP.href "#" ] [ HH.text "Sign out" ] ]
         ]
       ]
-    , HH.div [ HP.class_ B.containerFluid ] 
+    , HH.div [ HP.class_ B.containerFluid ]
       [ HH.div [ HP.class_ B.row ]
-        [ HH.nav [ HP.classes [ B.colMd2, B.dNone, B.dBlock, B.bgLight, HH.ClassName "sidebar"] ] 
-          [ HH.div [ HP.classes [ HH.ClassName "sidebar-sticky" ] ] 
-            [ HH.ul [ HP.classes [ B.nav, B.flexColumn ] ] [ 
+        [ HH.nav [ HP.classes [ B.colMd2, B.dNone, B.dBlock, B.bgLight, HH.ClassName "sidebar"] ]
+          [ HH.div [ HP.classes [ HH.ClassName "sidebar-sticky" ] ]
+            [ HH.ul [ HP.classes [ B.nav, B.flexColumn ] ] [
                HH.li [ HP.class_ B.navItem ] [ HH.a [ HP.classes $ navLinkClass activeRoute BooksIndex
                                               , HP.href (print routeCodec BooksIndex)
-                                              ] [ HH.text "Books" ] 
+                                              ] [ HH.text "Books" ]
                                             ]
             ]
           ]
         ]
         , HH.main [ HP.attr (HH.AttrName "role") "main", HP.classes [ B.colMd9, HH.ClassName "ml-sm-auto", B.colLg10, B.px4 ] ]
-          [ HH.nav [ HPA.label "breadcrumb" ] 
+          [ HH.nav [ HPA.label "breadcrumb" ]
             [ HH.ol [ HP.class_ B.breadcrumb ] $
               (HH.li [ HP.class_ B.breadcrumbItem ] [ HH.text "Home" ] : (gatherBreadcrumbs activeRoute))
             ]
@@ -103,7 +103,7 @@ component =
                  BooksIndex -> HH.slot _bookList unit BookList.component unit (Just <<< RaiseGlobal)
                  BooksNew -> HH.slot _bookCreate unit BookCreate.component unit (Just <<< RaiseGlobal)
                  BooksDelete id -> HH.slot _bookDelete unit BookDelete.component (Isbn id) (Just <<< RaiseGlobal) -- id
-                 BooksEdit id -> HH.slot _bookEdit unit BookEdit.component (Isbn id) (Just <<< RaiseGlobal) 
+                 BooksEdit id -> HH.slot _bookEdit unit BookEdit.component (Isbn id) (Just <<< RaiseGlobal)
                ]
           ]
         ]
@@ -129,7 +129,7 @@ component =
       pure $ Just next
 
 gatherBreadcrumbs :: Route -> Array (H.ComponentHTML Action ChildSlots Aff)
-gatherBreadcrumbs activeRoute = 
+gatherBreadcrumbs activeRoute =
   map (\(Tuple route name) -> HH.li [ HP.class_ B.breadcrumbItem ] [ HH.a [ HP.href (print routeCodec route) ] [ HH.text name ] ]) $ breadcrumbs activeRoute
 
 
@@ -144,4 +144,3 @@ navLinkClass :: Route -> Route -> Array H.ClassName
 navLinkClass current item =
   if current == item then [ B.navLink, B.active ]
     else [ B.navLink ]
-

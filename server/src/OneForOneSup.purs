@@ -13,7 +13,6 @@ import Pinto.Sup (SupervisorChildRestart(..), SupervisorChildType(..), Superviso
 import Pinto.Sup as Sup
 import Pinto.Types (ServerName(..))
 import OneForOneGen as OneForOneGen
-import Logger as Logger
 
 serverName :: SupervisorName
 serverName = Local $ atom "one_for_one_sup"

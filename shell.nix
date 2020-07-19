@@ -6,7 +6,7 @@ let
     builtins.fetchGit {
       name = "nixpkgs-pinned";
       url = "https://github.com/NixOS/nixpkgs.git";
-      rev = "cc6cf0a96a627e678ffc996a8f9d1416200d6c81";
+      rev = "9b195c5369b906825134aafce59744e89b85bd37";
     };
 
   pursPackages =
@@ -30,6 +30,7 @@ let
         (import erlangReleases)
         (import pursPackages)
         (import supportPackages)
+        (import ./local.nix)
       ];
     };
 
@@ -39,10 +40,14 @@ with nixpkgs;
 
 mkShell {
   buildInputs = with pkgs; [
+    nodePackages.purescript-language-server
+
     nixerl.erlang-22-3.erlang
     nixerl.erlang-22-3.rebar3
 
     purerl.purerl-0-0-6
+
+    local.erlang_ls
 
     purerl-support.purescript-0-13-6
     purerl-support.spago-0-12-1-0

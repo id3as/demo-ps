@@ -21,7 +21,7 @@ main = HA.runHalogenAff do
   driver <- runUI Main.component unit body
   nav <- liftEffect makeInterface
   _ <- forkAff $ Main.routeSignal nav driver
-  driver.subscribe $ CR.consumer \msg -> 
+  driver.subscribe $ CR.consumer \msg ->
                                   case msg of
                                        NavigateToRoute route -> do
                                          liftEffect $ nav.pushState (write {}) (print routeCodec route)

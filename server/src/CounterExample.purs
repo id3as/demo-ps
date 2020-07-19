@@ -2,15 +2,9 @@ module CounterExample where
 
 import Prelude
 
-import Books (Book,  Isbn,  BookEvent(..))
 import Erl.Atom (atom)
-import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
-import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
-import Erl.Data.List (List)
 import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen (CallResult(..))
 import Pinto.Gen as Gen
 
 type CounterExampleStartArgs = { initialValue :: Int }
