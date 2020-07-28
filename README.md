@@ -19,10 +19,12 @@ Running the example
 
 ``` bash
 
-rebar3 compile
+rebar3 release 
 ./run
 
 ```
+
+Note: Release only needs doing once, after that you can use *rebar3 compile* because the relevant artifacts will have been created.
 
 - Open a browser to http://localhost:3000, enjoy the most basic experience.
 - curl -v http://localhost:3000/api/stream > /dev/null # Subscribe to a stream (check the logs)
