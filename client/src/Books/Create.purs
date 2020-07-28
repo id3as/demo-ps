@@ -7,7 +7,7 @@ import Affjax.RequestBody (string) as AXRequest
 import Affjax.RequestHeader (RequestHeader(..))
 import Affjax.ResponseFormat as AXResponse
 import Affjax.StatusCode (StatusCode(..))
-import Booklient.Books.Shared (validateBook)
+import BookClient.Books.Shared (validateBook)
 import BookClient.Navigation (GlobalMessage(..), Route(..))
 import BookClient.Shared (StatusMessage(..), ValidationMap, renderMessage, validationFor, warningMessage)
 import Books (Book)
