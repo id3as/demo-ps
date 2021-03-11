@@ -45,7 +45,7 @@ apiRoute =
   path ""
     $ sum
         { "Books": "api" / "books" / noArgs
-        , "Book": "api" / "books" / isbn segment
+        , "Book": "api" / "book" / isbn segment
         , "EventsWs": "api" / "events" / "ws" / noArgs
         , "EventsFirehoseRest": "api" / "events" / "stream" / noArgs
         , "DataStream": "api" / "stream" / noArgs

@@ -100,7 +100,7 @@ component =
 loadBook :: ActionHandler
 loadBook = do
   state@{ book: { isbn } } <- H.get
-  maybeBook <- H.liftAff $ loadItem $ "/api/books/" <> unwrap isbn
+  maybeBook <- H.liftAff $ loadItem $ "/api/book/" <> unwrap isbn
   case maybeBook of
     Left _ -> do
       H.raise $ NavigateToRoute BooksIndex
@@ -114,7 +114,7 @@ deleteBook = do
   response <-
     H.liftAff $ AX.request
       $ ( AX.defaultRequest
-            { url = "/api/books/" <> unwrap book.isbn
+            { url = "/api/book/" <> unwrap book.isbn
             , method = Left DELETE
             , headers = [ ContentType $ MediaType "application/json" ]
             , responseFormat = AXResponse.string
