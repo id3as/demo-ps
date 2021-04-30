@@ -1,7 +1,6 @@
 module OneForOneGen where
 
 import Prelude
-
 import Erl.Process.Raw (Pid)
 import Erl.Process ((!))
 import Erl.Atom (atom)
@@ -32,28 +31,29 @@ import Logger as Logger
 
 foreign import getDataFromSomeNativeCode :: Effect Binary
 
-type MessageHandler = (Binary -> Effect Unit)
+type MessageHandler
+  = (Binary -> Effect Unit)
 
-type State = { clientPid :: Pid
-             , handler :: MessageHandler
-             , dataSent :: Int
-             }
+type State
+  = { clientPid :: Pid
+    , handler :: MessageHandler
+    , dataSent :: Int
+    }
 
+data Msg
+  = ClientDisconnected
+  | Tick
 
-data Msg = ClientDisconnected
-         | Tick
-  
-type OneForOneGenStartArgs = { clientPid :: Pid
-                             , handler :: MessageHandler
-                             }
+type OneForOneGenStartArgs
+  = { clientPid :: Pid
+    , handler :: MessageHandler
+    }
 
 serverName :: Pid -> ServerName State Msg
 serverName pid = Via (NativeModuleName $ atom "gproc") $ unsafeToForeign (tuple3 (atom "n") (atom "l") $ (tuple2 "one_for_one_example" pid))
 
-
 startLink :: OneForOneGenStartArgs -> Effect StartLinkResult
-startLink args =
-  Gen.buildStartLink (serverName args.clientPid) (init args) $ Gen.defaultStartLink { handleInfo = handleInfo }
+startLink args = Gen.buildStartLink (serverName args.clientPid) (init args) $ Gen.defaultStartLink { handleInfo = handleInfo }
 
 init :: OneForOneGenStartArgs -> Gen.Init State Msg
 init { clientPid, handler } = do
@@ -61,17 +61,16 @@ init { clientPid, handler } = do
   Gen.lift do
     void $ Monitor.pid clientPid (\_ -> self ! ClientDisconnected)
     void $ Timer.sendAfter 500 Tick self
-    pure $ { clientPid, handler, dataSent:  0 }
+    pure $ { clientPid, handler, dataSent: 0 }
 
 handleInfo :: Msg -> State -> Gen.HandleInfo State Msg
-handleInfo msg state@{ handler, clientPid, dataSent  } = do
+handleInfo msg state@{ handler, clientPid, dataSent } = do
   case msg of
-     ClientDisconnected -> do
-        pure $ CastStop state 
-     Tick -> do
-        self <- Gen.self
-        Gen.lift do
-          void $ handler =<< getDataFromSomeNativeCode
-          void $ Timer.sendAfter 500 Tick self
-          pure $ CastNoReply $ state  { dataSent = dataSent + 1 }
-
+    ClientDisconnected -> do
+      pure $ CastStop state
+    Tick -> do
+      self <- Gen.self
+      Gen.lift do
+        void $ handler =<< getDataFromSomeNativeCode
+        void $ Timer.sendAfter 500 Tick self
+        pure $ CastNoReply $ state { dataSent = dataSent + 1 }

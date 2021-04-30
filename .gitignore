@@ -13,3 +13,6 @@ releases
 primary_*
 _checkouts
 log
+.vscode
+.spago
+bundle.js
