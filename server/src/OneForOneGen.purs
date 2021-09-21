@@ -16,8 +16,8 @@ import Effect (Effect)
 import Erl.Data.List (List)
 import Pinto as Pinto
 import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen (CallResult(..), CastResult(..))
-import Pinto.Gen as Gen
+import Pinto.GenServer (CallResult(..), CastResult(..))
+import Pinto.GenServer as GenServer
 import Pinto.Timer as Timer
 import Pinto.Monitor as Monitor
 import Books (Book, Isbn)
@@ -44,7 +44,7 @@ data Msg
   = ClientDisconnected
   | Tick
 
-type OneForOneGenStartArgs
+type OneForOneGenServerStartArgs
   = { clientPid :: Pid
     , handler :: MessageHandler
     }
@@ -52,25 +52,25 @@ type OneForOneGenStartArgs
 serverName :: Pid -> ServerName State Msg
 serverName pid = Via (NativeModuleName $ atom "gproc") $ unsafeToForeign (tuple3 (atom "n") (atom "l") $ (tuple2 "one_for_one_example" pid))
 
-startLink :: OneForOneGenStartArgs -> Effect StartLinkResult
-startLink args = Gen.buildStartLink (serverName args.clientPid) (init args) $ Gen.defaultStartLink { handleInfo = handleInfo }
+startLink :: OneForOneGenServerStartArgs -> Effect StartLinkResult
+startLink args = GenServer.buildStartLink (serverName args.clientPid) (init args) $ GenServer.defaultStartLink { handleInfo = handleInfo }
 
-init :: OneForOneGenStartArgs -> Gen.Init State Msg
+init :: OneForOneGenServerStartArgs -> GenServer.Init State Msg
 init { clientPid, handler } = do
-  self <- Gen.self
-  Gen.lift do
+  self <- GenServer.self
+  GenServer.lift do
     void $ Monitor.pid clientPid (\_ -> self ! ClientDisconnected)
     void $ Timer.sendAfter 500 Tick self
     pure $ { clientPid, handler, dataSent: 0 }
 
-handleInfo :: Msg -> State -> Gen.HandleInfo State Msg
+handleInfo :: Msg -> State -> GenServer.HandleInfo State Msg
 handleInfo msg state@{ handler, clientPid, dataSent } = do
   case msg of
     ClientDisconnected -> do
       pure $ CastStop state
     Tick -> do
-      self <- Gen.self
-      Gen.lift do
+      self <- GenServer.self
+      GenServer.lift do
         void $ handler =<< getDataFromSomeNativeCode
         void $ Timer.sendAfter 500 Tick self
         pure $ CastNoReply $ state { dataSent = dataSent + 1 }

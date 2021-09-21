@@ -12,8 +12,8 @@ import Erl.Process (Process(..), SpawnedProcessState, (!))
 import Erl.Process as Process
 import Erl.Process.Raw (receiveWithTimeout)
 import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen (CallResult(..), CastResult(..), defaultStartLink)
-import Pinto.Gen as Gen
+import Pinto.GenServer (CallResult(..), CastResult(..), defaultStartLink)
+import Pinto.GenServer as GenServer
 
 data ChildMsg = Add Int
               | Subtract Int
@@ -32,19 +32,19 @@ serverName = Local $ atom "empty_gen_server"
 
 startLink :: ProcessSpawnLinkStartArgs -> Effect StartLinkResult
 startLink args =
-    Gen.buildStartLink serverName (init args) $ Gen.defaultStartLink { handleInfo = handleInfo }
+    GenServer.buildStartLink serverName (init args) $ GenServer.defaultStartLink { handleInfo = handleInfo }
 
-init :: ProcessSpawnLinkStartArgs -> Gen.Init State Msg
+init :: ProcessSpawnLinkStartArgs -> GenServer.Init State Msg
 init args = do
-  self <- Gen.self
-  child <- Gen.lift $ Process.spawnLink $ childLoop self 0
+  self <- GenServer.self
+  child <- GenServer.lift $ Process.spawnLink $ childLoop self 0
   pure $ { child }
 
-handleInfo :: Msg -> State -> Gen.HandleInfo State Msg
+handleInfo :: Msg -> State -> GenServer.HandleInfo State Msg
 handleInfo msg state@{ child } = 
   case msg of
      Tick -> do
-       Gen.lift $ child ! (Add 1)
+       GenServer.lift $ child ! (Add 1)
        pure $ CastNoReply state
 
 

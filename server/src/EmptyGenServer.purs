@@ -9,8 +9,8 @@ import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
 import Erl.Data.List (List)
 import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen (CallResult(..))
-import Pinto.Gen as Gen
+import Pinto.GenServer (CallResult(..))
+import Pinto.GenServer as GenServer
 
 type EmptyGenServerStartArgs
   = {}
@@ -22,8 +22,8 @@ serverName :: ServerName State Unit
 serverName = Local $ atom "empty_gen_server"
 
 startLink :: EmptyGenServerStartArgs -> Effect StartLinkResult
-startLink args = Gen.startLink serverName (init args)
+startLink args = GenServer.startLink serverName (init args)
 
-init :: EmptyGenServerStartArgs -> Gen.Init State Unit
+init :: EmptyGenServerStartArgs -> GenServer.Init State Unit
 init args = do
   pure $ {}

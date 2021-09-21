@@ -24,8 +24,9 @@ import Erl.Process (send, Process(..))
 import Logger as Logger
 import MonitorExample as MonitorExample
 import OneForOneSup as OneForOneSup
-import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen as Gen
+import Pinto (StartLinkResult, RegistryName(..), RegistryReference(..))
+import Pinto.GenServer (InitResult(..), ServerPid, ServerType)
+import Pinto.GenServer as GenServer
 import Routes as Routes
 import Simple.JSON (class WriteForeign, readJSON, writeJSON)
 import SimpleBus as SimpleBus
@@ -43,20 +44,20 @@ newtype State
 type BookWebStartArgs
   = { webPort :: Int }
 
-serverName :: ServerName State Unit
+serverName :: RegistryName (ServerType Unit Unit Unit State)
 serverName = Local $ atom "book_web"
 
 -- Yes we're housing a cowboy server behind a gen server
 -- this isn't necessary but it's somewhere to keep it
-startLink :: BookWebStartArgs -> Effect StartLinkResult
-startLink args = Gen.startLink serverName (init args)
+startLink :: BookWebStartArgs -> Effect (StartLinkResult (ServerPid Unit Unit Unit State))
+startLink args = GenServer.startLink $ GenServer.defaultSpec $ (init args) { name = Just serverName }
 
-init :: BookWebStartArgs -> Gen.Init State Unit
+init :: BookWebStartArgs -> GenServer.InitFn Unit Unit Unit State
 init args = do
   -- This is pretty self explanatory, Stetson.configure kicks off
   -- the process and then we can tweak that object by pipng it through
   void
-    $ Gen.lift
+    $ GenServer.liftEffect
     $ Stetson.startClear "http_listener"
     $ Stetson.configure
         { routes =
@@ -269,7 +270,7 @@ dataStream =
     void $ Loop.lift $ MonitorExample.registerClient $ send self <<< Data
     -- But we'll also add a monitor to that gen server so we know if it dies
     -- There are two messages here, we could just use the same one but I want the example to be clear
-    void $ Loop.lift $ Gen.monitor MonitorExample.serverName (\_ -> send self DataSourceDied) (send self DataSourceAlreadyDown)
+    void $ Loop.lift $ GenServer.monitor MonitorExample.serverName (\_ -> send self DataSourceDied) (send self DataSourceAlreadyDown)
 
   -- If we receive a message from the gen server
   loopInfo msg req state = do

@@ -4,7 +4,7 @@ import Prelude
 import Erl.Atom (atom)
 import Effect (Effect)
 import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen as Gen
+import Pinto.GenServer as GenServer
 
 type CounterExampleStartArgs
   = { initialValue :: Int }
@@ -16,14 +16,14 @@ serverName :: ServerName State Unit
 serverName = Local $ atom "counter_example"
 
 startLink :: CounterExampleStartArgs -> Effect StartLinkResult
-startLink args = Gen.startLink serverName (init args)
+startLink args = GenServer.startLink serverName (init args)
 
-init :: CounterExampleStartArgs -> Gen.Init State Unit
+init :: CounterExampleStartArgs -> GenServer.Init State Unit
 init args = do
   pure $ { value: args.initialValue }
 
 current :: Effect Int
-current = Gen.doCall serverName (\s -> pure $ Gen.CallReply s.value s)
+current = GenServer.doCall serverName (\s -> pure $ GenServer.CallReply s.value s)
 
 add :: Int -> Effect Unit
-add a = Gen.doCast serverName (\s@{ value } -> pure $ Gen.CastNoReply s { value = value + a })
+add a = GenServer.doCast serverName (\s@{ value } -> pure $ GenServer.CastNoReply s { value = value + a })

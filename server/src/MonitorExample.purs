@@ -16,8 +16,8 @@ import Effect (Effect)
 import Erl.Data.List (List, (:), nil)
 import Pinto as Pinto
 import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen (CallResult(..), CastResult(..))
-import Pinto.Gen as Gen
+import Pinto.GenServer (CallResult(..), CastResult(..))
+import Pinto.GenServer as GenServer
 import Pinto.Timer as Timer
 import Pinto.Monitor as Monitor
 import Books (Book, Isbn)
@@ -48,13 +48,13 @@ serverName = Local $ atom "monitor_example"
 
 startLink :: BookWatchingStartArgs -> Effect StartLinkResult
 startLink args =
-  Gen.buildStartLink serverName (init args)
-    $ Gen.defaultStartLink { handleInfo = handleInfo }
+  GenServer.buildStartLink serverName (init args)
+    $ GenServer.defaultStartLink { handleInfo = handleInfo }
 
-init :: BookWatchingStartArgs -> Gen.Init State Msg
+init :: BookWatchingStartArgs -> GenServer.Init State Msg
 init args = do
-  self <- Gen.self
-  void $ Gen.lift $ Timer.sendAfter 500 Tick self
+  self <- GenServer.self
+  void $ GenServer.lift $ Timer.sendAfter 500 Tick self
   pure
     $ { handlers: Map.empty
       }
@@ -62,21 +62,21 @@ init args = do
 registerClient :: MessageHandler -> Effect Unit
 registerClient handler = do
   handlerPid <- Pinto.self
-  Gen.doCall serverName \state -> do
-    self <- Gen.self
-    newState <- Gen.lift $ addHandler handler self handlerPid state
+  GenServer.doCall serverName \state -> do
+    self <- GenServer.self
+    newState <- GenServer.lift $ addHandler handler self handlerPid state
     pure $ CallReply unit newState
 
-handleInfo :: Msg -> State -> Gen.HandleInfo State Msg
+handleInfo :: Msg -> State -> GenServer.HandleInfo State Msg
 handleInfo msg state@{ handlers } = do
   case msg of
     ClientDisconnected handlerPid -> do
-      void $ Gen.lift $ logInfo "Removing as it disconnected" handlerPid
+      void $ GenServer.lift $ logInfo "Removing as it disconnected" handlerPid
       pure $ CastNoReply $ state { handlers = Map.delete handlerPid handlers }
     Tick -> do
-      Gen.lift $ sendData handlers
-      self <- Gen.self
-      void $ Gen.lift $ Timer.sendAfter 500 Tick self
+      GenServer.lift $ sendData handlers
+      self <- GenServer.self
+      void $ GenServer.lift $ Timer.sendAfter 500 Tick self
       pure $ CastNoReply $ state
 
 addHandler :: MessageHandler -> Process Msg -> Pid -> State -> Effect State
