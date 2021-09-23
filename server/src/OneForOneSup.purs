@@ -1,49 +1,34 @@
 module OneForOneSup where
 
 import Prelude
+
+import Data.Maybe (Maybe(..))
 import Effect (Effect)
-import Effect.Exception (throw)
 import Erl.Atom (atom)
-import Erl.Data.List (nil, (:))
-import Erl.Process.Raw (Pid)
-import Pinto (SupervisorName)
-import Pinto as Pinto
-import Pinto.Sup (SupervisorChildRestart(..), SupervisorChildType(..), SupervisorSpec, SupervisorStrategy(..), buildChild, buildSupervisor, childId, childRestart, childStartTemplate, childType, supervisorChildren, supervisorIntensity, supervisorPeriod, supervisorStrategy)
-import Pinto.Sup as Sup
-import Pinto.Types (ServerName(..))
+import OneForOneGen (OneForOneGenPid, OneForOneGenServerStartArgs)
 import OneForOneGen as OneForOneGen
+import Pinto (RegistryName(..), RegistryReference(..), StartLinkResult)
+import Pinto.Sup (ChildShutdownTimeoutStrategy(..), ChildType(..), RestartStrategy(..), crashIfChildNotStarted)
+import Pinto.Sup.Dynamic (DynamicSpec)
+import Pinto.Sup.Dynamic as Sup
 
-serverName :: SupervisorName
-serverName = Local $ atom "one_for_one_sup"
+serverName :: RegistryName (Sup.DynamicType OneForOneGenServerStartArgs OneForOneGenPid)
+serverName = Local $ atom $ "one_for_one_example"
 
-startLink :: Unit -> Effect Pinto.StartLinkResult
-startLink args = Sup.startLink serverName $ init args
+startLink :: Effect (StartLinkResult (Sup.DynamicPid OneForOneGenServerStartArgs OneForOneGenPid))
+startLink = Sup.startLink (Just $ Local $ atom "running_game_sup") init
 
-init :: Unit -> Effect SupervisorSpec
-init _ =
-  pure $ buildSupervisor
-    # supervisorStrategy SimpleOneForOne
-    # supervisorIntensity 100
-    # supervisorPeriod 60
-    # supervisorChildren
-        ( ( buildChild
-              # childType Worker
-              # childId "one_for_one_child"
-              # childRestart Transient
-              # childStartTemplate childTemplate
-          )
-            : nil
-        )
+init :: Effect (DynamicSpec OneForOneGenServerStartArgs OneForOneGenPid)
+init =
+  pure { intensity: 100
+    , period: 60
+    , childType: Worker
+    , start: OneForOneGen.startLink
+    , restartStrategy: RestartTransient
+    , shutdownStrategy: ShutdownTimeout 5000
+  } 
 
-childTemplate :: Pinto.ChildTemplate OneForOneGen.OneForOneGenStartArgs
-childTemplate = Pinto.ChildTemplate (OneForOneGen.startLink)
-
-startClient :: OneForOneGen.OneForOneGenStartArgs -> Effect Pid
+startClient :: OneForOneGenServerStartArgs -> Effect OneForOneGenPid
 startClient args = do
-  result <- Sup.startSimpleChild childTemplate serverName args
-  case result of
-    Pinto.ChildAlreadyStarted pid -> pure pid
-    Pinto.ChildStarted pid -> pure pid
-    -- TODO ??
-    something -> do
-      throw "Failed to start child"
+  crashIfChildNotStarted <$> Sup.startChild (ByName serverName) args
+

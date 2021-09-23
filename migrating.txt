@@ -5,6 +5,7 @@
 - lift is now liftEffect
 - instead of constructing replies manually use 
   - CallReply reply state becomes GenServer.reply reply state
+  - CastXX becomes GenServer.return
 
 - init now returns an InitResult
   instead of pure { mystate... } do pure InitOk $ { mystate.. }
@@ -28,6 +29,8 @@ Standard imports become
 ```
 
 - doCall is gone, it's 'call' only
+- call's callback takes 'from' and state instead of just state
+- HandleInfo -> InfoFn
 
 In general:
   - Change (GenServer.ServerName State Msg) to be of RegistryName (GenServer.ServerType Unit Unit Msg State) 
@@ -51,3 +54,15 @@ Where init was of type
 
 but is now
   init :: BookLibraryStartArgs -> GenServer.InitFn Unit Unit Msg State
+
+
+instead of 
+
+  handleInfo :: Msg -> State -> HandleInfo State Msg
+  handleInfo msg state =
+
+it's 
+  
+  handleInfo :: InfoFn Msg State
+  handleInfo msg state =
+

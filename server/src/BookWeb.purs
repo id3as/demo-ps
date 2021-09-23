@@ -6,10 +6,11 @@ module BookWeb
   ) where
 
 import Prelude
+
 import BookLibrary as BookLibrary
 import Books (Book, Isbn, BookEvent)
 import Data.Either (Either(..), either)
-import Data.Maybe (Maybe, isJust, maybe)
+import Data.Maybe (Maybe(..), isJust, maybe)
 import Effect (Effect)
 import Erl.Atom (atom)
 import Erl.Cowboy.Handlers.Rest (notMoved)
@@ -21,12 +22,14 @@ import Erl.Data.List (List, nil, (:))
 import Erl.Data.Map as Map
 import Erl.Data.Tuple (Tuple2, tuple2, tuple4)
 import Erl.Process (send, Process(..))
+import Erl.Process.Raw (getPid)
 import Logger as Logger
 import MonitorExample as MonitorExample
 import OneForOneSup as OneForOneSup
-import Pinto (StartLinkResult, RegistryName(..), RegistryReference(..))
+import Pinto (RegistryName(..), StartLinkResult)
 import Pinto.GenServer (InitResult(..), ServerPid, ServerType)
 import Pinto.GenServer as GenServer
+import Pinto.Monitor as Monitor
 import Routes as Routes
 import Simple.JSON (class WriteForeign, readJSON, writeJSON)
 import SimpleBus as SimpleBus
@@ -50,7 +53,7 @@ serverName = Local $ atom "book_web"
 -- Yes we're housing a cowboy server behind a gen server
 -- this isn't necessary but it's somewhere to keep it
 startLink :: BookWebStartArgs -> Effect (StartLinkResult (ServerPid Unit Unit Unit State))
-startLink args = GenServer.startLink $ GenServer.defaultSpec $ (init args) { name = Just serverName }
+startLink args = GenServer.startLink $ (GenServer.defaultSpec $ init args) { name = Just serverName }
 
 init :: BookWebStartArgs -> GenServer.InitFn Unit Unit Unit State
 init args = do
@@ -81,7 +84,7 @@ init args = do
         , bindPort = args.webPort
         , bindAddress = tuple4 0 0 0 0
         }
-  pure $ State {}
+  pure $ InitOk $ State {}
 
 -- A plain ol' Handler that operates over a state of type 'List Book'
 -- All the possible callbacks are defined as an example, generally these are not required
@@ -268,9 +271,18 @@ dataStream =
     -- We'll register our emitter with the gen server
     -- It can then send us messages
     void $ Loop.lift $ MonitorExample.registerClient $ send self <<< Data
-    -- But we'll also add a monitor to that gen server so we know if it dies
-    -- There are two messages here, we could just use the same one but I want the example to be clear
-    void $ Loop.lift $ GenServer.monitor MonitorExample.serverName (\_ -> send self DataSourceDied) (send self DataSourceAlreadyDown)
+ 
+    maybePid <- Loop.lift $ GenServer.whereIs (MonitorExample.serverName)
+
+    case maybePid of
+      Just pid -> do
+        -- But we'll also add a monitor to that gen server so we know if it dies
+        -- There are two messages here, we could just use the same one but I want the example to be clear
+          void $ Loop.lift $ Monitor.monitor pid (\_ -> send self DataSourceDied)
+          pure unit 
+      _ -> do
+        Loop.lift $ send self DataSourceAlreadyDown
+        pure unit
 
   -- If we receive a message from the gen server
   loopInfo msg req state = do
@@ -305,10 +317,10 @@ oneForOne =
   where
   loopInit req state = do
     -- Get our typed pid
-    self@(Process pid) <- Loop.self
+    self <- Loop.self
     -- We'll register our emitter with the gen server
     -- It can then send us messages
-    void $ Loop.lift $ OneForOneSup.startClient { handler: send self <<< OfOData, clientPid: pid }
+    void $ Loop.lift $ OneForOneSup.startClient { handler: send self <<< OfOData, clientPid: getPid self }
     -- And carry on
     pure state
 

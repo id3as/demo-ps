@@ -2,22 +2,20 @@ module ProcessSpawnLink where
 
 import Prelude
 
-import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
-import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
+import Effect.Class (liftEffect)
 import Erl.Atom (atom)
-import Erl.Data.List (List)
-import Erl.Process (Process(..), SpawnedProcessState, (!))
+import Erl.Process (Process, ProcessM, receiveWithTimeout, self, (!))
 import Erl.Process as Process
-import Erl.Process.Raw (receiveWithTimeout)
-import Pinto (ServerName(..), StartLinkResult)
-import Pinto.GenServer (CallResult(..), CastResult(..), defaultStartLink)
+import Pinto (RegistryName(..), StartLinkResult)
+import Pinto.GenServer (InitResult(..), ServerPid, ServerType)
 import Pinto.GenServer as GenServer
 
 data ChildMsg = Add Int
               | Subtract Int
               | Timeout
+              | Finish
 
 type ProcessSpawnLinkStartArgs = {}
 type State = {
@@ -27,39 +25,38 @@ type State = {
 
 data Msg = Tick
 
-serverName :: ServerName State Msg
-serverName = Local $ atom "empty_gen_server"
+serverName :: RegistryName (ServerType Unit Unit Msg State)
+serverName = Local $ atom "process_spawn_link"
 
-startLink :: ProcessSpawnLinkStartArgs -> Effect StartLinkResult
-startLink args =
-    GenServer.buildStartLink serverName (init args) $ GenServer.defaultStartLink { handleInfo = handleInfo }
+startLink :: ProcessSpawnLinkStartArgs -> Effect (StartLinkResult (ServerPid Unit Unit Msg State))
+startLink args = GenServer.startLink $ (GenServer.defaultSpec (init args)) { name = Just serverName, handleInfo = Just handleInfo }
 
-init :: ProcessSpawnLinkStartArgs -> GenServer.Init State Msg
-init args = do
-  self <- GenServer.self
-  child <- GenServer.lift $ Process.spawnLink $ childLoop self 0
-  pure $ { child }
+init :: ProcessSpawnLinkStartArgs -> GenServer.InitFn Unit Unit Msg State
+init _args = do
+  self <- self
+  child <- liftEffect $ Process.spawnLink $ childLoop self 0
+  pure $ InitOk { child }
 
-handleInfo :: Msg -> State -> GenServer.HandleInfo State Msg
+handleInfo :: GenServer.InfoFn Unit Unit Msg State
 handleInfo msg state@{ child } = 
   case msg of
      Tick -> do
-       GenServer.lift $ child ! (Add 1)
-       pure $ CastNoReply state
+       liftEffect $ child ! (Add 1)
+       pure $ GenServer.return state
 
+childLoop :: Process Msg -> Int -> ProcessM ChildMsg Unit
+childLoop parent value = do
+  msg <- receiveWithTimeout 1000 Timeout
+  case msg of
+    Add x -> 
+      childLoop parent $ value + x
 
-childLoop :: Process Msg -> Int -> SpawnedProcessState ChildMsg -> Effect Unit
-childLoop parent value s@{ receiveWithTimeout } = do
-  msg <- receiveWithTimeout 5000 Timeout
-  newValue <- case msg of
-                Add x -> 
-                  pure (value - x)
+    Subtract x  ->
+      childLoop parent $ value - x
 
-                Subtract x  ->
-                  pure (value - x)
-
-                Timeout -> do
-                  parent ! Tick
-                  pure value
-  childLoop parent newValue s
+    Timeout -> do
+      liftEffect $ parent ! Tick
+      childLoop parent  value 
+    _ ->  do
+      pure unit
 

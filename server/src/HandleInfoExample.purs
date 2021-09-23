@@ -1,23 +1,18 @@
 module HandleInfoExample where
 
 import Prelude
-import Books (Book, Isbn, BookEvent(..))
-import Erl.Atom (atom, Atom)
-import Data.Either (Either(..))
+
+import Books (BookEvent(..), Isbn)
 import Data.Maybe (Maybe(..))
-import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
+import Effect.Class (liftEffect)
+import Erl.Atom (atom, Atom)
 import Erl.Data.List (List, (:), nil)
-import Pinto (ServerName(..), StartLinkResult)
-import Erl.Process ((!), send)
-import Pinto.GenServer (CallResult(..), CastResult(..))
-import Pinto.GenServer as GenServer
-import Books (Book, Isbn)
-import Redis (ConnectionString, DbId, RedisConnection)
-import Redis as Redis
-import SimpleBus as SimpleBus
-import BookLibrary as BookLibrary
 import Logger as Logger
+import Partial.Unsafe (unsafeCrashWith)
+import Pinto (RegistryName(..), StartLinkResult)
+import Pinto.GenServer (InitResult(..), ReturnResult, ServerPid, ServerType)
+import Pinto.GenServer as GenServer
 
 type BookWatchingStartArgs
   = {}
@@ -28,45 +23,45 @@ type State
 data Msg
   = BookMsg BookEvent
 
-serverName :: ServerName State Msg
+serverName :: RegistryName (ServerType Unit Unit Msg State)
 serverName = Local $ atom "handle_info_example"
 
--- Rather than using the default startLink, we use buildStartLink so we can provide
--- our own handleInfo function
-startLink :: BookWatchingStartArgs -> Effect StartLinkResult
-startLink args = GenServer.buildStartLink serverName (init args) $ GenServer.defaultStartLink { handleInfo = handleInfo }
+startLink :: BookWatchingStartArgs -> Effect (StartLinkResult (ServerPid Unit Unit Msg State))
+startLink args = GenServer.startLink $ (GenServer.defaultSpec (init args)) { name = Just serverName, handleInfo = Just handleInfo }
 
-init :: BookWatchingStartArgs -> GenServer.Init State Msg
-init args = do
+init :: BookWatchingStartArgs -> GenServer.InitFn Unit Unit Msg State 
+init _args = do
   -- We can get hold of 'self', which is of type (Process Msg) as defined by serverName
   -- Anything sent to this will appear in our handleInfo (ooh typing)
-  -- We can use this in callbacks to get messages back to us of the right type
-  self <- GenServer.self
-  -- Speaking of, SimpleBus.subscribe is such a thing, given a bus name
-  -- and an emitter, we'll be given messages of the right type
-  _ <- GenServer.lift $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
-  pure $ {}
+ -- self <- self
 
-handleInfo :: Msg -> State -> GenServer.HandleInfo State Msg
-handleInfo msg state = do
+  -- SimpleBus.subscribe takes a bus
+  -- and an emitter (msg -> Effect Unit)
+  -- we can lift msg into the right type and send to self
+--  _ <- GenServer.liftEffect $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
+  pure $ InitOk {}
+
+handleInfo :: GenServer.InfoFn Unit Unit Msg State
+handleInfo msg state = 
   case msg of
     -- And that means we can switch over the messages as they come in
     -- All the typing..
-    BookMsg bookEvent -> GenServer.lift $ handleBookEvent bookEvent state
+   BookMsg bookEvent -> liftEffect $ handleBookEvent bookEvent state
 
 -- And all we will do is log that we saw the events
 -- as this demo ends here
-handleBookEvent :: BookEvent -> State -> Effect (CastResult State)
-handleBookEvent ev state = case ev of
-  BookCreated isbn -> do
-    _ <- logInfo "Book created" isbn
-    pure $ CastNoReply state
-  BookDeleted isbn -> do
-    _ <- logInfo "Book deleted" isbn
-    pure $ CastNoReply state
-  BookUpdated isbn -> do
-    _ <- logInfo "Book updated" isbn
-    pure $ CastNoReply state
+handleBookEvent :: BookEvent -> State -> Effect (ReturnResult Unit Unit State)
+handleBookEvent ev state = unsafeCrashWith "Not mplemented" 
+  case ev of
+    BookCreated isbn -> do
+      _ <- logInfo "Book created" isbn
+      pure $ GenServer.return state
+    BookDeleted isbn -> do
+      _ <- logInfo "Book deleted" isbn
+      pure $ GenServer.return state
+    BookUpdated isbn -> do
+      _ <- logInfo "Book updated" isbn
+      pure $ GenServer.return state
 
 domain :: List Atom
 domain = (atom "demo_ps") : (atom "handle_info_example") : nil
