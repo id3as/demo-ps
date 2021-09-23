@@ -8,7 +8,7 @@ import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
 import Data.Function.Uncurried (Fn1, Fn2, runFn1, runFn2, runFn9)
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
+import Data.Show.Generic (genericShow)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap, wrap)
@@ -76,7 +76,7 @@ renderMessage message = case message of
   Message Error text _ -> HH.div [ HP.classes [ B.alert, B.alertDanger ] ] [ HH.text text ]
 
 onClick :: forall r i. (Event -> i) -> IProp ( onClick :: MouseEvent | r ) i
-onClick ev = HE.onClick (\e -> Just $ ev (MouseEvent.toEvent e))
+onClick ev = HE.onClick (\e -> ev (MouseEvent.toEvent e))
 
 noneSelected :: forall a b. HTML a b
 noneSelected = HH.option [ HP.value "" ] [ HH.text "None Selected" ]

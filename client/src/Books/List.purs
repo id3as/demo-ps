@@ -1,11 +1,13 @@
 module BookClient.Books.List where
 
 import Prelude
+
 import BookClient.Navigation (GlobalMessage(..), Route(..))
 import BookClient.Shared (StatusMessage(..), loadList, onClick)
 import Books (Book)
-import Data.Newtype (unwrap)
 import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
+import Debug (spy)
 import Effect.Aff (Aff)
 import Halogen (liftAff)
 import Halogen as H
@@ -38,7 +40,7 @@ type RenderHandler
 type BooksInput
   = Unit
 
-component :: H.Component HH.HTML Query BooksInput GlobalMessage Aff
+component :: H.Component Query BooksInput GlobalMessage Aff
 component =
   H.mkComponent
     { initialState: initialState

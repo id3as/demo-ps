@@ -42,7 +42,7 @@ type ActionHandler
 type RenderHandler
   = H.ComponentHTML Action () Aff
 
-component :: H.Component HH.HTML Query BookInput GlobalMessage Aff
+component :: H.Component Query BookInput GlobalMessage Aff
 component =
   H.mkComponent
     { initialState: initialState
@@ -78,8 +78,8 @@ component =
               ]
           , if not posting then
               HH.div []
-                [ HH.button [ HP.classes [ B.btn, B.btnPrimary ], HE.onClick (\e -> Just $ DeleteBook (MouseEvent.toEvent e)) ] [ HH.text "Delete" ]
-                , HH.button [ HP.classes [ B.btn, B.btnSecondary ], HE.onClick (\e -> Just $ BackToListView (MouseEvent.toEvent e)) ] [ HH.text "Cancel" ]
+                [ HH.button [ HP.classes [ B.btn, B.btnPrimary ], HE.onClick (\e ->  DeleteBook (MouseEvent.toEvent e)) ] [ HH.text "Delete" ]
+                , HH.button [ HP.classes [ B.btn, B.btnSecondary ], HE.onClick (\e ->  BackToListView (MouseEvent.toEvent e)) ] [ HH.text "Cancel" ]
                 ]
             else
               HH.span [] []
