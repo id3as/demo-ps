@@ -185,9 +185,9 @@ eventsWs =
   -- emitter is of type (msg -> Effect Unit), anything passed into that will appear in .info
   wsInit s = do
     -- Get our pid
-    self <- WebSocket.self
+    self :: Process EventsWsMsg  <- WebSocket.self
     -- Subscribe to the bus, and redirect the events into our emitter after wrapping them in our type
-    void $ WebSocket.lift $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
+    void $ WebSocket.liftEffect $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
     pure $ Stetson.NoReply s
 
   -- Receives 'Frame' sent from client (text,ping,binary,etc)
@@ -222,13 +222,13 @@ eventsFirehoseRest =
     -- In this case, we'll subscribe to the bus and throw any messages it sends us
     -- into Book Msg
     -- We do need to lift the effect into our StateT tho
-    void $ Loop.lift $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
+    void $ Loop.liftEffect $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
     pure state
 
   -- And then those messages will appear here so we can
   loopInfo (BookMsg msg) req state = do
     -- Stream them to the client as we get them
-    void $ Loop.lift $ streamBody (stringToBinary $ writeJSON msg) req
+    void $ Loop.liftEffect $ streamBody (stringToBinary $ writeJSON msg) req
     -- And keep on loopin'
     pure $ LoopOk req state
 
@@ -270,18 +270,18 @@ dataStream =
     self <- Loop.self
     -- We'll register our emitter with the gen server
     -- It can then send us messages
-    void $ Loop.lift $ MonitorExample.registerClient $ send self <<< Data
+    void $ Loop.liftEffect $ MonitorExample.registerClient $ send self <<< Data
  
-    maybePid <- Loop.lift $ GenServer.whereIs (MonitorExample.serverName)
+    maybePid <- Loop.liftEffect $ GenServer.whereIs (MonitorExample.serverName)
 
     case maybePid of
       Just pid -> do
         -- But we'll also add a monitor to that gen server so we know if it dies
         -- There are two messages here, we could just use the same one but I want the example to be clear
-          void $ Loop.lift $ Monitor.monitor pid (\_ -> send self DataSourceDied)
+          void $ Loop.liftEffect $ Monitor.monitor pid (\_ -> send self DataSourceDied)
           pure unit 
       _ -> do
-        Loop.lift $ send self DataSourceAlreadyDown
+        Loop.liftEffect $ send self DataSourceAlreadyDown
         pure unit
 
   -- If we receive a message from the gen server
@@ -289,7 +289,7 @@ dataStream =
     case msg of
       Data binary -> do
         -- Then stream that down to the client
-        void $ Loop.lift $ streamBody binary req
+        void $ Loop.liftEffect $ streamBody binary req
         -- And LoopOk cos we'll wait for the next message
         pure $ LoopOk req state
       DataSourceDied -> do
@@ -317,10 +317,10 @@ oneForOne =
   where
   loopInit req state = do
     -- Get our typed pid
-    self <- Loop.self
+    self :: Process OneForOneMessage <- Loop.self
     -- We'll register our emitter with the gen server
     -- It can then send us messages
-    void $ Loop.lift $ OneForOneSup.startClient { handler: send self <<< OfOData, clientPid: getPid self }
+    void $ Loop.liftEffect $ OneForOneSup.startClient { handler: send self <<< OfOData, clientPid: getPid self }
     -- And carry on
     pure state
 
@@ -329,7 +329,7 @@ oneForOne =
     case msg of
       OfOData binary -> do
         -- Then stream that down to the client
-        void $ Loop.lift $ streamBody binary req
+        void $ Loop.liftEffect $ streamBody binary req
         -- And LoopOk cos we'll wait for the next message
         pure $ LoopOk req state
 
