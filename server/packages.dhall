@@ -1,6 +1,18 @@
 let upstream =
       https://github.com/purerl/package-sets/releases/download/erl-0.14.3-20210709/packages.dhall sha256:9b07e1fe89050620e2ad7f7623d409f19b5e571f43c2bdb61242377f7b89d941
 
+let overrides =
+  { erl-simplebus = upstream.erl-simplebus //
+    { version = "52d374a8a7a0bb13db6a8ac6552c55e4e2da7d9f"
+    }
+  , erl-test-eunit = upstream.erl-test-eunit //
+    { version = "ed31f51d19f1faba764c32bbad00fa7e4ef752d2"
+    }
+  , exceptions = upstream.exceptions //
+    { version = "edef0014db73aa3136dd4ab2290becb29f6fe6c6"
+    , repo = "https://github.com/robashton/purescript-exceptions/"
+    }
+  }
 let additions =
       { erl-opentelemetry =
         { dependencies = [ "effect", "erl-lists", "erl-tuples" ]
@@ -10,7 +22,7 @@ let additions =
        , erl-binary =
         { dependencies = [ "prelude", "erl-lists" ]
         , repo = "https://github.com/id3as/purescript-erl-binary.git"
-        , version = "1aa852f7f9f64956c4e06ff43150c024881e9154"
+        , version = "423f1af8437670beab03463b3e9bc0a487f05ba4"
         }
       , erl-kernel =
         { dependencies =
@@ -99,7 +111,7 @@ let additions =
           , "unsafe-coerce"
           ]
         , repo = "https://github.com/id3as/purescript-erl-ranch.git"
-        , version = "c45663dd775d0b3c8d77a0e8328a6f7bd14f69d4"
+        , version = "08a76bd850ba00c3a120c1d149bed07f9fcc165d"
         }
       , erl-ssl =
         { dependencies =
@@ -166,19 +178,28 @@ let additions =
         , version = "f20235d464e8767c469c3804cf6bec4501f970e6"
         }
       , erl-cowboy =
-        { repo = "https://github.com/id3as/purescript-erl-cowboy.git"
+        { repo = "https://github.com/purerl/purescript-erl-cowboy.git"
         , dependencies =
           [ "console"
           , "effect"
+          , "either"
           , "erl-atom"
           , "erl-binary"
+          , "erl-kernel"
           , "erl-lists"
           , "erl-maps"
-          , "erl-tuples"
           , "erl-modules"
+          , "erl-ranch"
+          , "erl-tuples"
           , "foreign"
+          , "functions"
+          , "maybe"
+          , "prelude"
+          , "transformers"
+          , "tuples"
+          , "unsafe-coerce"
           ]
-        , version = "0b9a94574da55a56f7511a1c857bc11f7ce354a1"
+        , version = "ca4dd4a6432817fbe6ef9ab1814046f6827046cd"
         }
       , unsafe-reference =
         { repo = "https://github.com/purerl/purescript-unsafe-reference.git"
@@ -201,7 +222,7 @@ let additions =
           , "transformers"
           , "routing-duplex"
           ]
-        , version = "afa299689dd705f6f58d4b1b4163bbea2489b38b"
+        , version = "a0c0bb4b5ad9046dd69c77197dc5dd025883ada2"
         }
       , erl-untagged-union =
         { dependencies =
@@ -234,7 +255,7 @@ let additions =
           , "prelude"
           , "effect"
           ]
-        , version = "7aac95d9bebed824e6ad7a039dc0cb344186b3bd"
+        , version = "afbfa4e7a13c0d55609ff144d49982563fada7f5"
         }
       , erl-pinto =
         { repo = "https://github.com/id3as/purescript-erl-pinto.git"
@@ -291,4 +312,4 @@ let additions =
         }
       }
 
-in  upstream // additions
+in  upstream // overrides // additions

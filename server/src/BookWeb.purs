@@ -18,6 +18,7 @@ import Erl.Cowboy.Handlers.WebSocket (Frame(..))
 import Erl.Cowboy.Req (ReadBodyResult(..), Req, readBody, setBody, streamBody, streamReply, StatusCode(..))
 import Erl.Data.Binary (Binary)
 import Erl.Data.Binary.IOData (IOData, fromBinary, toBinary)
+import Erl.Data.Binary.IOData as IOData
 import Erl.Data.List (List, nil, (:))
 import Erl.Data.Map as Map
 import Erl.Data.Tuple (Tuple2, tuple2, tuple4)
@@ -228,7 +229,7 @@ eventsFirehoseRest =
   -- And then those messages will appear here so we can
   loopInfo (BookMsg msg) req state = do
     -- Stream them to the client as we get them
-    void $ Loop.liftEffect $ streamBody (stringToBinary $ writeJSON msg) req
+    void $ Loop.liftEffect $ streamBody (stringToIOData $ writeJSON msg) req
     -- And keep on loopin'
     pure $ LoopOk req state
 
@@ -289,7 +290,7 @@ dataStream =
     case msg of
       Data binary -> do
         -- Then stream that down to the client
-        void $ Loop.liftEffect $ streamBody binary req
+        void $ Loop.liftEffect $ streamBody (IOData.fromBinary binary) req
         -- And LoopOk cos we'll wait for the next message
         pure $ LoopOk req state
       DataSourceDied -> do
@@ -329,12 +330,12 @@ oneForOne =
     case msg of
       OfOData binary -> do
         -- Then stream that down to the client
-        void $ Loop.liftEffect $ streamBody binary req
+        void $ Loop.liftEffect $ streamBody (IOData.fromBinary binary) req
         -- And LoopOk cos we'll wait for the next message
         pure $ LoopOk req state
 
-jsonWriter :: forall a. WriteForeign a => Tuple2 String (Req -> a -> (Effect (RestResult String a)))
-jsonWriter = tuple2 "application/json" (\req state -> Rest.result (writeJSON state) req state)
+jsonWriter :: forall a. WriteForeign a => Tuple2 String (Req -> a -> (Effect (RestResult IOData a)))
+jsonWriter = tuple2 "application/json" (\req state -> Rest.result (stringToIOData $ writeJSON state) req state)
 
 allBody :: Req -> IOData -> Effect Binary
 allBody req acc = do
@@ -353,8 +354,8 @@ restHandler val req state = Rest.result val req state
 -- in theory this unsafeCoerce is therefore a bad thing to be doing
 -- but in Erlang world  we'd have just assumed  it was a binary string anyway
 -- there is no great story around this yet
-stringToBinary :: String -> Binary
-stringToBinary = unsafeCoerce
+stringToIOData :: String -> IOData
+stringToIOData = IOData.fromBinary <<< unsafeCoerce
 
 binaryToString :: Binary -> String
 binaryToString = unsafeCoerce
