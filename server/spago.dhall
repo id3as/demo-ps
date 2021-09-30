@@ -4,6 +4,7 @@
 , dependencies =
   [ "console"
   , "control"
+  , "datetime"
   , "effect"
   , "either"
   , "erl-atom"

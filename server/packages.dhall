@@ -263,11 +263,13 @@ let additions =
           [ "erl-process"
           , "erl-lists"
           , "erl-atom"
+          , "erl-kernel"
+          , "datetime"
           , "erl-tuples"
           , "erl-modules"
           , "foreign"
           ]
-        , version = "c9027b779d0761e341675690385df59813fe647b"
+        , version = "598587428b7b6711412312596f3825ea88d471d2"
         }
       , erl-nativerefs =
         { repo = "https://github.com/id3as/purescript-erl-nativerefs.git"

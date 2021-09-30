@@ -6,6 +6,7 @@ import BookConfig as BookConfig
 import BookLibrary as BookLibrary
 import BookWeb as BookWeb
 import Data.Maybe (Maybe(..))
+import Data.Time.Duration (Milliseconds(..), Seconds(..))
 import Effect (Effect)
 import EmptyGenServer as EmptyGenServer
 import Erl.Atom (atom)
@@ -15,8 +16,8 @@ import HandleInfoExample as HandleInfoExample
 import MonitorExample as MonitorExample
 import OneForOneSup as OneForOneSup
 import Pinto (RegistryName(..), StartLinkResult)
-import Pinto.Sup (ChildShutdownTimeoutStrategy(..), ChildType(..), ErlChildSpec, RestartStrategy(..), Strategy(..), SupervisorPid, SupervisorSpec, spec)
-import Pinto.Sup as Sup
+import Pinto.Supervisor (ChildShutdownTimeoutStrategy(..), ChildType(..), ErlChildSpec, RestartStrategy(..), Strategy(..), SupervisorPid, SupervisorSpec, spec)
+import Pinto.Supervisor as Sup
 
 startLink :: Effect (StartLinkResult SupervisorPid)
 startLink = do
@@ -34,7 +35,7 @@ init = do
     { flags:
         { strategy: OneForOne
         , intensity: 1
-        , period: 5
+        , period: Seconds 5.0
         }
     , childSpecs:
         (worker "book_web" $ BookWeb.startLink { webPort })
@@ -59,5 +60,5 @@ worker id start =
     , childType: Worker
     , start
     , restartStrategy: RestartTransient
-    , shutdownStrategy: ShutdownTimeout 5000
+    , shutdownStrategy: ShutdownTimeout $ Milliseconds 5000.0
     }
