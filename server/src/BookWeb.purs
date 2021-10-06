@@ -6,26 +6,32 @@ module BookWeb
   ) where
 
 import Prelude
+
 import BookLibrary as BookLibrary
 import Books (Book, Isbn, BookEvent)
 import Data.Either (Either(..), either)
-import Data.Maybe (Maybe, isJust, maybe)
+import Data.Maybe (Maybe(..), isJust, maybe)
 import Effect (Effect)
+import Effect.Class (liftEffect)
 import Erl.Atom (atom)
 import Erl.Cowboy.Handlers.Rest (notMoved)
 import Erl.Cowboy.Handlers.WebSocket (Frame(..))
 import Erl.Cowboy.Req (ReadBodyResult(..), Req, readBody, setBody, streamBody, streamReply, StatusCode(..))
 import Erl.Data.Binary (Binary)
 import Erl.Data.Binary.IOData (IOData, fromBinary, toBinary)
+import Erl.Data.Binary.IOData as IOData
 import Erl.Data.List (List, nil, (:))
 import Erl.Data.Map as Map
 import Erl.Data.Tuple (Tuple2, tuple2, tuple4)
-import Erl.Process (send, Process(..))
+import Erl.Process (Process(..), self, send)
+import Erl.Process.Raw (getPid)
 import Logger as Logger
 import MonitorExample as MonitorExample
 import OneForOneSup as OneForOneSup
-import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen as Gen
+import Pinto (RegistryName(..), StartLinkResult)
+import Pinto.GenServer (InitResult(..), ServerPid, ServerType)
+import Pinto.GenServer as GenServer
+import Pinto.Monitor as Monitor
 import Routes as Routes
 import Simple.JSON (class WriteForeign, readJSON, writeJSON)
 import SimpleBus as SimpleBus
@@ -43,20 +49,20 @@ newtype State
 type BookWebStartArgs
   = { webPort :: Int }
 
-serverName :: ServerName State Unit
+serverName :: RegistryName (ServerType Unit Unit Unit State)
 serverName = Local $ atom "book_web"
 
 -- Yes we're housing a cowboy server behind a gen server
 -- this isn't necessary but it's somewhere to keep it
-startLink :: BookWebStartArgs -> Effect StartLinkResult
-startLink args = Gen.startLink serverName (init args)
+startLink :: BookWebStartArgs -> Effect (StartLinkResult (ServerPid Unit Unit Unit State))
+startLink args = GenServer.startLink $ (GenServer.defaultSpec $ init args) { name = Just serverName }
 
-init :: BookWebStartArgs -> Gen.Init State Unit
+init :: BookWebStartArgs -> GenServer.InitFn Unit Unit Unit State
 init args = do
   -- This is pretty self explanatory, Stetson.configure kicks off
   -- the process and then we can tweak that object by pipng it through
   void
-    $ Gen.lift
+    $ GenServer.liftEffect
     $ Stetson.startClear "http_listener"
     $ Stetson.configure
         { routes =
@@ -80,7 +86,7 @@ init args = do
         , bindPort = args.webPort
         , bindAddress = tuple4 0 0 0 0
         }
-  pure $ State {}
+  pure $ InitOk $ State {}
 
 -- A plain ol' Handler that operates over a state of type 'List Book'
 -- All the possible callbacks are defined as an example, generally these are not required
@@ -168,22 +174,22 @@ data EventsWsMsg
 eventsWs :: StetsonHandler EventsWsMsg Unit
 eventsWs =
   routeHandler
-    { init: initWs
+    { init
     , wsInit: wsInit
     , wsHandle: wsHandle
     , wsInfo: wsInfo
     }
   where
   -- init runs in a different process to the ws handler, so probably just run the default handler here
-  initWs req = WebSocket.initResult req unit
+  init req = WebSocket.initResult req unit
 
   -- Subscribe to any events here, lift the messages into the right type if necessary
   -- emitter is of type (msg -> Effect Unit), anything passed into that will appear in .info
   wsInit s = do
     -- Get our pid
-    self <- WebSocket.self
+    self <- self
     -- Subscribe to the bus, and redirect the events into our emitter after wrapping them in our type
-    void $ WebSocket.lift $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
+    void $ liftEffect $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
     pure $ Stetson.NoReply s
 
   -- Receives 'Frame' sent from client (text,ping,binary,etc)
@@ -200,8 +206,8 @@ eventsFirehoseRest =
     { init: \req -> Rest.initResult req unit
     , allowedMethods: allowedMethods
     , contentTypesProvided: contentTypesProvided
-    , loopInit: loopInit
-    , loopInfo: loopInfo
+    , loopInit
+    , loopInfo
     }
   where
   allowedMethods req state = Rest.result (Stetson.HEAD : Stetson.GET : Stetson.OPTIONS : nil) req state
@@ -214,17 +220,17 @@ eventsFirehoseRest =
   -- any callbacks with the emitter for this handler
   loopInit req state = do
     -- Get 'self' out of the state monad!!!!!!!!
-    self <- Loop.self
+    self <- self
     -- In this case, we'll subscribe to the bus and throw any messages it sends us
     -- into Book Msg
     -- We do need to lift the effect into our StateT tho
-    void $ Loop.lift $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
+    void $ liftEffect $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
     pure state
 
   -- And then those messages will appear here so we can
   loopInfo (BookMsg msg) req state = do
     -- Stream them to the client as we get them
-    void $ Loop.lift $ streamBody (stringToBinary $ writeJSON msg) req
+    void $ liftEffect $ streamBody (stringToIOData $ writeJSON msg) req
     -- And keep on loopin'
     pure $ LoopOk req state
 
@@ -248,12 +254,12 @@ data DataStreamMessage
 dataStream :: StetsonHandler DataStreamMessage Unit
 dataStream =
   routeHandler
-    { init: initLoop
+  { init
     , loopInit: loopInit
     , loopInfo: loopInfo
     }
   where
-  initLoop req = do
+  init req = do
     -- Start off by initting the streamed  response, no headers, lazy
     req2 <- streamReply (StatusCode 200) Map.empty req
     -- And return the Loop handler
@@ -263,20 +269,29 @@ dataStream =
   --into which we can pass messages that'll appear in 'info'
   loopInit req state = do
     -- Get our typed pid
-    self <- Loop.self
+    self <- self
     -- We'll register our emitter with the gen server
     -- It can then send us messages
-    void $ Loop.lift $ MonitorExample.registerClient $ send self <<< Data
-    -- But we'll also add a monitor to that gen server so we know if it dies
-    -- There are two messages here, we could just use the same one but I want the example to be clear
-    void $ Loop.lift $ Gen.monitor MonitorExample.serverName (\_ -> send self DataSourceDied) (send self DataSourceAlreadyDown)
+    void $ liftEffect $ MonitorExample.registerClient $ send self <<< Data
+ 
+    maybePid <- liftEffect $ GenServer.whereIs (MonitorExample.serverName)
+
+    case maybePid of
+      Just pid -> do
+        -- But we'll also add a monitor to that gen server so we know if it dies
+        -- There are two messages here, we could just use the same one but I want the example to be clear
+          void $ liftEffect $ Monitor.monitor pid (\_ -> send self DataSourceDied)
+          pure unit 
+      _ -> do
+        liftEffect $ send self DataSourceAlreadyDown
+        pure unit
 
   -- If we receive a message from the gen server
   loopInfo msg req state = do
     case msg of
       Data binary -> do
         -- Then stream that down to the client
-        void $ Loop.lift $ streamBody binary req
+        void $ liftEffect $ streamBody (IOData.fromBinary binary) req
         -- And LoopOk cos we'll wait for the next message
         pure $ LoopOk req state
       DataSourceDied -> do
@@ -304,10 +319,10 @@ oneForOne =
   where
   loopInit req state = do
     -- Get our typed pid
-    self@(Process pid) <- Loop.self
+    self  <- self
     -- We'll register our emitter with the gen server
     -- It can then send us messages
-    void $ Loop.lift $ OneForOneSup.startClient { handler: send self <<< OfOData, clientPid: pid }
+    void $ liftEffect $ OneForOneSup.startClient { handler: send self <<< OfOData, clientPid: getPid self }
     -- And carry on
     pure state
 
@@ -316,12 +331,12 @@ oneForOne =
     case msg of
       OfOData binary -> do
         -- Then stream that down to the client
-        void $ Loop.lift $ streamBody binary req
+        void $ liftEffect $ streamBody (IOData.fromBinary binary) req
         -- And LoopOk cos we'll wait for the next message
         pure $ LoopOk req state
 
-jsonWriter :: forall a. WriteForeign a => Tuple2 String (Req -> a -> (Effect (RestResult String a)))
-jsonWriter = tuple2 "application/json" (\req state -> Rest.result (writeJSON state) req state)
+jsonWriter :: forall a. WriteForeign a => Tuple2 String (Req -> a -> (Effect (RestResult IOData a)))
+jsonWriter = tuple2 "application/json" (\req state -> Rest.result (stringToIOData $ writeJSON state) req state)
 
 allBody :: Req -> IOData -> Effect Binary
 allBody req acc = do
@@ -340,8 +355,8 @@ restHandler val req state = Rest.result val req state
 -- in theory this unsafeCoerce is therefore a bad thing to be doing
 -- but in Erlang world  we'd have just assumed  it was a binary string anyway
 -- there is no great story around this yet
-stringToBinary :: String -> Binary
-stringToBinary = unsafeCoerce
+stringToIOData :: String -> IOData
+stringToIOData = IOData.fromBinary <<< unsafeCoerce
 
 binaryToString :: Binary -> String
 binaryToString = unsafeCoerce

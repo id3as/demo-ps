@@ -1,6 +1,7 @@
 module BookClient.Main where
 
 import Prelude
+
 import BookClient.Books.Create as BookCreate
 import BookClient.Books.Delete as BookDelete
 import BookClient.Books.Edit as BookEdit
@@ -12,14 +13,17 @@ import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff)
+import Effect.Aff (Aff, launchAff, launchAff_)
+import Halogen (liftAff, liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA (label) as HPA
 import Halogen.Themes.Bootstrap4 as B
 import Routing.Duplex (parse, print)
-import Routing.PushState (PushStateInterface, matchesWith)
+import Routing.PushState (PushStateInterface)
+import Simple.JSON (write)
+import Type.Prelude (Proxy(..))
 import Web.Event.Event (Event, preventDefault)
 
 type ChildSlots
@@ -29,17 +33,10 @@ type ChildSlots
     , bookDelete :: BookDelete.Slot Unit
     )
 
-_bookList :: SProxy "bookList"
-_bookList = SProxy
-
-_bookCreate :: SProxy "bookCreate"
-_bookCreate = SProxy
-
-_bookEdit :: SProxy "bookEdit"
-_bookEdit = SProxy
-
-_bookDelete :: SProxy "bookDelete"
-_bookDelete = SProxy
+_bookList = Proxy :: Proxy "bookList"
+_bookCreate = Proxy :: Proxy "bookCreate"
+_bookEdit = Proxy :: Proxy "bookEdit"
+_bookDelete = Proxy :: Proxy "bookDelete"
 
 data Query a
   = Global GlobalMessage a
@@ -52,12 +49,13 @@ data Action
 
 type State
   = { activeRoute :: Route
+    , nav :: PushStateInterface
     }
 
-component :: H.Component HH.HTML Query Unit GlobalMessage Aff
+component :: H.Component Query PushStateInterface GlobalMessage Aff
 component =
   H.mkComponent
-    { initialState: const initialState
+    { initialState: (\nav -> { activeRoute: BooksIndex, nav })
     , render
     , eval:
         H.mkEval
@@ -67,8 +65,6 @@ component =
               }
     }
   where
-  initialState :: State
-  initialState = { activeRoute: BooksIndex }
 
   render :: State -> H.ComponentHTML Action ChildSlots Aff
   render ({ activeRoute }) =
@@ -102,11 +98,11 @@ component =
                       ]
                   , HH.div [ HP.classes [ B.mt2 ] ]
                       [ case activeRoute of
-                          Root -> HH.slot _bookList unit BookList.component unit (Just <<< RaiseGlobal)
-                          BooksIndex -> HH.slot _bookList unit BookList.component unit (Just <<< RaiseGlobal)
-                          BooksNew -> HH.slot _bookCreate unit BookCreate.component unit (Just <<< RaiseGlobal)
-                          BooksDelete id -> HH.slot _bookDelete unit BookDelete.component (Isbn id) (Just <<< RaiseGlobal) -- id
-                          BooksEdit id -> HH.slot _bookEdit unit BookEdit.component (Isbn id) (Just <<< RaiseGlobal)
+                          Root -> HH.slot _bookList unit BookList.component unit (RaiseGlobal)
+                          BooksIndex -> HH.slot _bookList unit BookList.component unit (RaiseGlobal)
+                          BooksNew -> HH.slot _bookCreate unit BookCreate.component unit (RaiseGlobal)
+                          BooksDelete id -> HH.slot _bookDelete unit BookDelete.component (Isbn id) (RaiseGlobal) -- id
+                          BooksEdit id -> HH.slot _bookEdit unit BookEdit.component (Isbn id) (RaiseGlobal)
                       ]
                   ]
               ]
@@ -120,7 +116,10 @@ component =
     Tick -> do
       pure unit
     RaiseGlobal msg -> do
-      H.raise $ msg
+      { nav } <- H.get
+      case msg of
+        (NavigateToRoute route) ->
+           void $ liftEffect $ nav.pushState (write {}) (print routeCodec route)
     SwitchRoute ev page -> do
       H.liftEffect $ preventDefault ev
       H.raise (NavigateToRoute page)
@@ -133,14 +132,6 @@ component =
 
 gatherBreadcrumbs :: Route -> Array (H.ComponentHTML Action ChildSlots Aff)
 gatherBreadcrumbs activeRoute = map (\(Tuple route name) -> HH.li [ HP.class_ B.breadcrumbItem ] [ HH.a [ HP.href (print routeCodec route) ] [ HH.text name ] ]) $ breadcrumbs activeRoute
-
-routeSignal :: PushStateInterface -> H.HalogenIO Query GlobalMessage Aff -> Aff (Effect Unit)
-routeSignal nav driver =
-  H.liftEffect do
-    nav # matchesWith (parse routeCodec) routeChanged
-  where
-  routeChanged _ newRoute = do
-    void $ launchAff $ driver.query <<< H.tell <<< Global <<< NavigateToRoute $ newRoute
 
 navLinkClass :: Route -> Route -> Array H.ClassName
 navLinkClass current item =

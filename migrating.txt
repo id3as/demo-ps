@@ -1,0 +1,68 @@
+- Steps taken to migrate this to Pinto 2.0
+
+
+- Pinto.Gen is now Pinto.GenServer
+- lift is now liftEffect
+- instead of constructing replies manually use 
+  - CallReply reply state becomes GenServer.reply reply state
+  - CastXX becomes GenServer.return
+
+- init now returns an InitResult
+  instead of pure { mystate... } do pure InitOk $ { mystate.. }
+  
+
+- ServerName is now a combination of ServerType and ServerPid
+  - Use RegistryName (ServerType xxx) 
+    - to construct a RegistryReference (ByName)
+    - to lookup RegistryReference (ByPid)
+
+  - The use of one is entirely optional, if you take the result of startLink/init you can call using that instead
+
+Standard imports become
+
+```
+
+  import Pinto (StartLinkResult, RegistryName(..), RegistryReference(..))
+  import Pinto.GenServer (InitResult(..), ServerPid, ServerType)
+  import Pinto.GenServer as GenServer
+
+```
+
+- doCall is gone, it's 'call' only
+- call's callback takes 'from' and state instead of just state
+- HandleInfo -> InfoFn
+
+In general:
+  - Change (GenServer.ServerName State Msg) to be of RegistryName (GenServer.ServerType Unit Unit Msg State) 
+  - Create a serverRef function of type (RegistryReference (GenServer.ServerType Unit Unit Msg State) )
+    - implementation is serveief = ByName serverName
+    - Change doCall/call serverName to call serverRef
+
+- startLink now takes a record  
+
+Instead of
+  startLink :: Args -> Effect StartLinkResult
+  startLink args = GenServer.startLink serverName (init args)
+
+You want
+
+  startLink :: Args -> Effect (StartLinkResult (ServerPid Unit Unit Msg State)
+  startLink args = GenServer.startLink $ (GenServer.defaultSpec (init args) { name = Just serverName }
+
+Where init was of type
+  init :: BookLibraryStartArgs -> GenServer.Init State Msg
+
+but is now
+  init :: BookLibraryStartArgs -> GenServer.InitFn Unit Unit Msg State
+
+
+instead of 
+
+  handleInfo :: Msg -> State -> HandleInfo State Msg
+  handleInfo msg state =
+
+it's 
+  
+  handleInfo :: InfoFn Msg State
+  handleInfo msg state =
+

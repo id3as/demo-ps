@@ -12,7 +12,7 @@ import BookClient.Shared (StatusMessage(..), ValidationMap, loadItem, renderMess
 import Books (Book)
 import Data.Either (Either(..), either)
 import Data.HTTP.Method (Method(..))
-import Data.Map (isEmpty) as Map
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Data.MediaType (MediaType(..))
 import Data.Newtype (wrap, unwrap)
@@ -47,7 +47,7 @@ type ActionHandler
 type RenderHandler
   = H.ComponentHTML Action () Aff
 
-component :: H.Component HH.HTML Query BookInput GlobalMessage Aff
+component :: H.Component Query BookInput GlobalMessage Aff
 component =
   H.mkComponent
     { initialState: initialState
@@ -61,7 +61,7 @@ component =
     }
   where
   initialState :: BookInput -> Model
-  initialState isbn = { message: NoMessage, posting: false, book: { isbn: wrap $ unwrap isbn, title: "", author: "" }, validation: mempty }
+  initialState isbn = { message: NoMessage, posting: false, book: { isbn: wrap $ unwrap isbn, title: "", author: "" }, validation: Map.empty }
 
   render :: Model -> RenderHandler
   render { message, book, validation, posting } =
@@ -74,18 +74,18 @@ component =
               ]
           , HH.div [ HP.class_ B.formGroup ]
               [ HH.label [ HP.for "title" ] [ HH.text "Title" ]
-              , HH.input [ HP.class_ B.formControl, HP.id_ "title", HP.value $ book.title, HE.onValueInput (Just <<< TitleChanged) ]
+              , HH.input [ HP.class_ B.formControl, HP.id_ "title", HP.value $ book.title, HE.onValueInput (TitleChanged) ]
               , validationFor validation "title" "I think this is self-explanatory no?"
               ]
           , HH.div [ HP.class_ B.formGroup ]
               [ HH.label [ HP.for "author" ] [ HH.text "Author" ]
-              , HH.input [ HP.class_ B.formControl, HP.id_ "author", HP.value $ book.author, HE.onValueInput (Just <<< AuthorChanged) ]
+              , HH.input [ HP.class_ B.formControl, HP.id_ "author", HP.value $ book.author, HE.onValueInput (AuthorChanged) ]
               , validationFor validation "author" "As is this"
               ]
           , if not posting then
               HH.div []
-                [ HH.button [ HP.classes [ B.btn, B.btnPrimary ], HE.onClick (\e -> Just $ SaveUpdatedBook (MouseEvent.toEvent e)) ] [ HH.text "Save" ]
-                , HH.button [ HP.classes [ B.btn, B.btnSecondary ], HE.onClick (\e -> Just $ BackToListView (MouseEvent.toEvent e)) ] [ HH.text "Cancel" ]
+                [ HH.button [ HP.classes [ B.btn, B.btnPrimary ], HE.onClick (\e -> SaveUpdatedBook (MouseEvent.toEvent e)) ] [ HH.text "Save" ]
+                , HH.button [ HP.classes [ B.btn, B.btnSecondary ], HE.onClick (\e -> BackToListView (MouseEvent.toEvent e)) ] [ HH.text "Cancel" ]
                 ]
             else
               HH.span [] []

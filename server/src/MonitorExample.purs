@@ -1,31 +1,24 @@
 module MonitorExample where
 
 import Prelude
-import Books (Book, Isbn, BookEvent(..))
-import Erl.Process.Raw (Pid)
-import Erl.Process ((!))
-import Erl.Atom (atom, Atom)
-import Data.Either (Either(..))
-import Erl.Data.Binary (Binary(..))
+
 import Data.Maybe (Maybe(..))
-import Erl.Data.Map as Map
-import Erl.Process (Process)
 import Data.Traversable (traverse)
-import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
+import Effect.Class (liftEffect)
+import Erl.Atom (atom, Atom)
+import Erl.Data.Binary (Binary)
 import Erl.Data.List (List, (:), nil)
-import Pinto as Pinto
-import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen (CallResult(..), CastResult(..))
-import Pinto.Gen as Gen
-import Pinto.Timer as Timer
-import Pinto.Monitor as Monitor
-import Books (Book, Isbn)
-import Redis (ConnectionString, DbId, RedisConnection)
-import Redis as Redis
-import SimpleBus as SimpleBus
-import BookLibrary as BookLibrary
+import Erl.Data.Map as Map
+import Erl.Process (self, (!), Process)
+import Erl.Process.Raw (Pid)
+import Erl.Process.Raw as Raw
 import Logger as Logger
+import Pinto (RegistryName(..), RegistryReference(..), StartLinkResult)
+import Pinto.GenServer (InitResult(..), ServerPid, ServerType)
+import Pinto.GenServer as GenServer
+import Pinto.Monitor as Monitor
+import Pinto.Timer as Timer
 
 foreign import getDataFromSomeNativeCode :: Effect Binary
 
@@ -43,46 +36,43 @@ data Msg
 type BookWatchingStartArgs
   = {}
 
-serverName :: ServerName State Msg
+serverName :: RegistryName (ServerType Unit Unit Msg State)
 serverName = Local $ atom "monitor_example"
 
-startLink :: BookWatchingStartArgs -> Effect StartLinkResult
-startLink args =
-  Gen.buildStartLink serverName (init args)
-    $ Gen.defaultStartLink { handleInfo = handleInfo }
+startLink :: BookWatchingStartArgs -> Effect (StartLinkResult (ServerPid Unit Unit Msg State))
+startLink args = GenServer.startLink $ (GenServer.defaultSpec (init args)) { name = Just serverName, handleInfo = Just handleInfo }
 
-init :: BookWatchingStartArgs -> Gen.Init State Msg
-init args = do
-  self <- Gen.self
-  void $ Gen.lift $ Timer.sendAfter 500 Tick self
+init :: BookWatchingStartArgs -> GenServer.InitFn Unit Unit Msg State
+init _args = do
+  self <- self
+  void $ liftEffect $ Timer.sendAfter 500 Tick self
   pure
-    $ { handlers: Map.empty
-      }
+    $ InitOk { handlers: Map.empty }
 
 registerClient :: MessageHandler -> Effect Unit
 registerClient handler = do
-  handlerPid <- Pinto.self
-  Gen.doCall serverName \state -> do
-    self <- Gen.self
-    newState <- Gen.lift $ addHandler handler self handlerPid state
-    pure $ CallReply unit newState
+  handlerPid <- Raw.self
+  GenServer.call (ByName serverName) \_from state -> do
+    self <- self
+    newState <- liftEffect $ addHandler handler self handlerPid state
+    pure $ GenServer.reply unit newState
 
-handleInfo :: Msg -> State -> Gen.HandleInfo State Msg
+handleInfo :: GenServer.InfoFn Unit Unit Msg State
 handleInfo msg state@{ handlers } = do
   case msg of
     ClientDisconnected handlerPid -> do
-      void $ Gen.lift $ logInfo "Removing as it disconnected" handlerPid
-      pure $ CastNoReply $ state { handlers = Map.delete handlerPid handlers }
+      void $ liftEffect $ logInfo "Removing as it disconnected" handlerPid
+      pure $ GenServer.return  state { handlers = Map.delete handlerPid handlers }
     Tick -> do
-      Gen.lift $ sendData handlers
-      self <- Gen.self
-      void $ Gen.lift $ Timer.sendAfter 500 Tick self
-      pure $ CastNoReply $ state
+      liftEffect $ sendData handlers
+      self <- self
+      void $ liftEffect $ Timer.sendAfter 500 Tick self
+      pure $ GenServer.return  state
 
 addHandler :: MessageHandler -> Process Msg -> Pid -> State -> Effect State
 addHandler handler self handlerPid state@{ handlers } = do
   void $ logInfo "Adding handler as it has connected" handlerPid
-  void $ Monitor.pid handlerPid (\_ -> self ! ClientDisconnected handlerPid)
+  void $ Monitor.monitor handlerPid (\_ -> self ! ClientDisconnected handlerPid)
   pure $ state { handlers = Map.insert handlerPid handler handlers }
 
 sendData :: Map.Map Pid MessageHandler -> Effect Unit

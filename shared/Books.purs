@@ -4,7 +4,7 @@ import Prelude
 import Control.Alt ((<|>))
 import Data.Generic.Rep (class Generic)
 import Data.Newtype (class Newtype)
-import Data.Generic.Rep.Show (genericShow)
+import Data.Show.Generic (genericShow)
 import Foreign (Foreign)
 import Foreign as Foreign
 import Simple.JSON (class ReadForeign, class WriteForeign, readImpl, writeImpl)

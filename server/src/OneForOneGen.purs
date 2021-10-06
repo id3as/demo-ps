@@ -1,33 +1,22 @@
 module OneForOneGen where
 
 import Prelude
-import Erl.Process.Raw (Pid)
-import Erl.Process ((!))
-import Erl.Atom (atom)
-import Erl.Data.Tuple (tuple2, tuple3)
-import Data.Either (Either(..))
-import Erl.Data.Binary (Binary(..))
+
 import Data.Maybe (Maybe(..))
-import Erl.Data.Map as Map
-import Erl.Process (Process)
-import Data.Traversable (traverse)
-import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
-import Erl.Data.List (List)
-import Pinto as Pinto
-import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen (CallResult(..), CastResult(..))
-import Pinto.Gen as Gen
-import Pinto.Timer as Timer
-import Pinto.Monitor as Monitor
-import Books (Book, Isbn)
-import Redis (ConnectionString, DbId, RedisConnection)
-import Redis as Redis
-import SimpleBus as SimpleBus
-import BookLibrary as BookLibrary
+import Effect.Class (liftEffect)
+import Erl.Atom (atom)
+import Erl.Data.Binary (Binary)
+import Erl.Data.Tuple (tuple2, tuple3)
 import Erl.ModuleName (NativeModuleName(..))
+import Erl.Process (self, (!))
+import Erl.Process.Raw (Pid)
 import Foreign (unsafeToForeign)
-import Logger as Logger
+import Pinto (RegistryName(..), StartLinkResult)
+import Pinto.GenServer (Action(..), InitResult(..), ServerPid, ServerType)
+import Pinto.GenServer as GenServer
+import Pinto.Monitor as Monitor
+import Pinto.Timer as Timer
 
 foreign import getDataFromSomeNativeCode :: Effect Binary
 
@@ -44,33 +33,35 @@ data Msg
   = ClientDisconnected
   | Tick
 
-type OneForOneGenStartArgs
+type OneForOneGenServerStartArgs
   = { clientPid :: Pid
     , handler :: MessageHandler
     }
 
-serverName :: Pid -> ServerName State Msg
+serverName :: Pid -> RegistryName (ServerType Unit Unit Msg State)
 serverName pid = Via (NativeModuleName $ atom "gproc") $ unsafeToForeign (tuple3 (atom "n") (atom "l") $ (tuple2 "one_for_one_example" pid))
 
-startLink :: OneForOneGenStartArgs -> Effect StartLinkResult
-startLink args = Gen.buildStartLink (serverName args.clientPid) (init args) $ Gen.defaultStartLink { handleInfo = handleInfo }
+type OneForOneGenPid = ServerPid Unit Unit Msg State
 
-init :: OneForOneGenStartArgs -> Gen.Init State Msg
+startLink :: OneForOneGenServerStartArgs -> Effect (StartLinkResult (ServerPid Unit Unit Msg State))
+startLink args = GenServer.startLink $ (GenServer.defaultSpec (init args)) { name = Just (serverName args.clientPid), handleInfo = Just handleInfo }
+
+init :: OneForOneGenServerStartArgs -> GenServer.InitFn Unit Unit Msg State
 init { clientPid, handler } = do
-  self <- Gen.self
-  Gen.lift do
-    void $ Monitor.pid clientPid (\_ -> self ! ClientDisconnected)
+  self <- self
+  liftEffect do
+    void $ Monitor.monitor clientPid (\_ -> self ! ClientDisconnected)
     void $ Timer.sendAfter 500 Tick self
-    pure $ { clientPid, handler, dataSent: 0 }
+    pure $ InitOk { clientPid, handler, dataSent: 0 }
 
-handleInfo :: Msg -> State -> Gen.HandleInfo State Msg
-handleInfo msg state@{ handler, clientPid, dataSent } = do
+handleInfo :: GenServer.InfoFn Unit Unit Msg State
+handleInfo msg state@{ handler, dataSent } = do
   case msg of
     ClientDisconnected -> do
-      pure $ CastStop state
+      pure $ GenServer.returnWithAction StopNormal state
     Tick -> do
-      self <- Gen.self
-      Gen.lift do
+      self <- self
+      liftEffect do
         void $ handler =<< getDataFromSomeNativeCode
         void $ Timer.sendAfter 500 Tick self
-        pure $ CastNoReply $ state { dataSent = dataSent + 1 }
+        pure $ GenServer.return $ state { dataSent = dataSent + 1 }

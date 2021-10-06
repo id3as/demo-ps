@@ -1,10 +1,13 @@
 module CounterExample where
 
 import Prelude
-import Erl.Atom (atom)
+
+import Data.Maybe (Maybe(..))
 import Effect (Effect)
-import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen as Gen
+import Erl.Atom (atom)
+import Pinto (StartLinkResult, RegistryName(..), RegistryReference(..))
+import Pinto.GenServer (InitResult(..), ServerPid, ServerType)
+import Pinto.GenServer as GenServer
 
 type CounterExampleStartArgs
   = { initialValue :: Int }
@@ -12,18 +15,18 @@ type CounterExampleStartArgs
 type State
   = { value :: Int }
 
-serverName :: ServerName State Unit
+serverName :: RegistryName (ServerType Unit Unit Unit State)
 serverName = Local $ atom "counter_example"
 
-startLink :: CounterExampleStartArgs -> Effect StartLinkResult
-startLink args = Gen.startLink serverName (init args)
+startLink :: CounterExampleStartArgs -> Effect (StartLinkResult (ServerPid Unit Unit Unit State))
+startLink args = GenServer.startLink $ (GenServer.defaultSpec $ init args) { name = Just serverName }
 
-init :: CounterExampleStartArgs -> Gen.Init State Unit
+init :: CounterExampleStartArgs -> GenServer.InitFn Unit Unit Unit State
 init args = do
-  pure $ { value: args.initialValue }
+  pure $ InitOk { value: args.initialValue }
 
 current :: Effect Int
-current = Gen.doCall serverName (\s -> pure $ Gen.CallReply s.value s)
+current = GenServer.call (ByName serverName) (\_f s -> pure $ GenServer.reply s.value s)
 
 add :: Int -> Effect Unit
-add a = Gen.doCast serverName (\s@{ value } -> pure $ Gen.CastNoReply s { value = value + a })
+add a = GenServer.cast (ByName serverName) (\s@{ value } -> pure $ GenServer.return s { value = value + a })

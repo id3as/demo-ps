@@ -3,9 +3,8 @@ module Routes where
 import Prelude hiding ((/))
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic, NoArguments(..), Product(..))
-import Data.Generic.Rep.Show (genericShow)
+import Data.Show.Generic (genericShow)
 import Data.Newtype (class Newtype, unwrap, wrap)
-import Data.Profunctor (dimap)
 import Routing.Duplex (RouteDuplex', as, path, rest, segment)
 import Routing.Duplex as RouteDuplex
 import Routing.Duplex.Generic (noArgs, sum)

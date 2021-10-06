@@ -1,16 +1,12 @@
 module EmptyGenServer where
 
 import Prelude
-import Books (Book, Isbn, BookEvent(..))
 import Erl.Atom (atom)
-import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
-import Data.Newtype (wrap, unwrap)
 import Effect (Effect)
-import Erl.Data.List (List)
-import Pinto (ServerName(..), StartLinkResult)
-import Pinto.Gen (CallResult(..))
-import Pinto.Gen as Gen
+import Pinto (RegistryName(..), StartLinkResult)
+import Pinto.GenServer (InitResult(..), ServerPid, ServerType)
+import Pinto.GenServer as GenServer
 
 type EmptyGenServerStartArgs
   = {}
@@ -18,12 +14,12 @@ type EmptyGenServerStartArgs
 type State
   = {}
 
-serverName :: ServerName State Unit
+serverName :: RegistryName (ServerType Unit Unit Unit State)
 serverName = Local $ atom "empty_gen_server"
 
-startLink :: EmptyGenServerStartArgs -> Effect StartLinkResult
-startLink args = Gen.startLink serverName (init args)
+startLink :: EmptyGenServerStartArgs -> Effect (StartLinkResult (ServerPid Unit Unit Unit State))
+startLink args = GenServer.startLink $ (GenServer.defaultSpec $ init args) { name = Just serverName }
 
-init :: EmptyGenServerStartArgs -> Gen.Init State Unit
-init args = do
-  pure $ {}
+init :: EmptyGenServerStartArgs -> GenServer.InitFn Unit Unit Unit State
+init _args = do
+  pure $ InitOk {}

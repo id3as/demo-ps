@@ -16,21 +16,21 @@ RUN cd  /opt/ \
 
 # Purescript 
 RUN cd /opt/ \
-    && curl -L https://github.com/purescript/purescript/releases/download/v0.13.6/linux64.tar.gz > purescript.tar.gz \
+    && curl -L https://github.com/purescript/purescript/releases/download/v0.14.4/linux64.tar.gz > purescript.tar.gz \
     && tar -xvf purescript.tar.gz \
     && cp purescript/purs /usr/local/bin/purs  \
     && rm purescript.tar.gz
 
 # Purerl
 RUN cd /opt/ \
-    && curl -L https://github.com/purerl/purerl/releases/download/v0.0.5/linux64.tar.gz > purerl.tar.gz \
+    && curl -L https://github.com/purerl/purerl/releases/download/v0.0.12/linux64.tar.gz > purerl.tar.gz \
     && tar -xvf purerl.tar.gz \
     && cp purerl/purerl /usr/local/bin/purerl  \
     && rm purerl.tar.gz
 
 # Spago
 RUN cd /opt/ \
-    && curl -L https://github.com/purescript/spago/releases/download/0.15.3/linux.tar.gz > spago.tar.gz \
+    && curl -L https://github.com/purescript/spago/releases/download/0.20.3/linux.tar.gz > spago.tar.gz \
     && tar -xvf spago.tar.gz \
     && cp spago /usr/local/bin/spago  \
     && rm spago.tar.gz
