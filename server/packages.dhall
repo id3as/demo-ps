@@ -269,7 +269,7 @@ let additions =
           , "erl-modules"
           , "foreign"
           ]
-        , version = "598587428b7b6711412312596f3825ea88d471d2"
+        , version = "0f8bba4e1c220d763c1e1d71cd0a857dd652d79e"
         }
       , erl-nativerefs =
         { repo = "https://github.com/id3as/purescript-erl-nativerefs.git"
