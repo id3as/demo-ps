@@ -1,4 +1,4 @@
-A contrived purerl example
+A collection of Purerl examples
 ==
 
 - This app is written in Purescript on the frontend, and Purescript on the backend (using Purerl + Stetson + Pinto)
@@ -12,7 +12,9 @@ A contrived purerl example
 - This app demonstrates the use of Monitors
 - This app demonstrates some very basic interop with Erlang on the backend
 
-That is it, it isn't best practises and it isn't at all useful - but it's a good template for new apps that actually do something real.
+That is it,  it is a grab bag of "how do I do this particular" thing and not a real application in any sense of the word.
+
+See the [Purerl Cookbook](https://purerl-cookbook.readthedocs.io/en/latest/) for more context and more of a guided 'how to'.
 
 Running the example
 ==
