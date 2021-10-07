@@ -19,6 +19,8 @@ See the [Purerl Cookbook](https://purerl-cookbook.readthedocs.io/en/latest/) for
 Running the example
 ==
 
+Note: Docker is needed in the run scripts presently, as it spins up Redis for the CRUD example.
+
 ``` bash
 
 rebar3 release 
