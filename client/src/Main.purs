@@ -10,36 +10,33 @@ import BookClient.Books.Shared (BookInput(..))
 import BookClient.Navigation (GlobalMessage(..), Route(..), breadcrumbs, routeCodec)
 import Data.Array ((:))
 import Data.Maybe (Maybe(..))
-import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..))
-import Effect (Effect)
-import Effect.Aff (Aff, launchAff, launchAff_)
-import Halogen (liftAff, liftEffect)
+import Effect.Aff (Aff)
+import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA (label) as HPA
 import Halogen.Themes.Bootstrap4 as B
-import Routing.Duplex (parse, print)
+import Routing.Duplex (print)
 import Routing.PushState (PushStateInterface)
 import Simple.JSON (write)
 import Type.Prelude (Proxy(..))
 import Web.Event.Event (Event, preventDefault)
 
-type ChildSlots
-  = ( bookList :: BookList.Slot Unit
-    , bookCreate :: BookCreate.Slot Unit
-    , bookEdit :: BookEdit.Slot Unit
-    , bookDelete :: BookDelete.Slot Unit
-    )
+type ChildSlots =
+  ( bookList :: BookList.Slot Unit
+  , bookCreate :: BookCreate.Slot Unit
+  , bookEdit :: BookEdit.Slot Unit
+  , bookDelete :: BookDelete.Slot Unit
+  )
 
 _bookList = Proxy :: Proxy "bookList"
 _bookCreate = Proxy :: Proxy "bookCreate"
 _bookEdit = Proxy :: Proxy "bookEdit"
 _bookDelete = Proxy :: Proxy "bookDelete"
 
-data Query a
-  = Global GlobalMessage a
+data Query a = Global GlobalMessage a
 
 data Action
   = Initialize
@@ -47,10 +44,10 @@ data Action
   | RaiseGlobal GlobalMessage
   | SwitchRoute Event Route
 
-type State
-  = { activeRoute :: Route
-    , nav :: PushStateInterface
-    }
+type State =
+  { activeRoute :: Route
+  , nav :: PushStateInterface
+  }
 
 component :: H.Component Query PushStateInterface GlobalMessage Aff
 component =
@@ -119,7 +116,7 @@ component =
       { nav } <- H.get
       case msg of
         (NavigateToRoute route) ->
-           void $ liftEffect $ nav.pushState (write {}) (print routeCodec route)
+          void $ liftEffect $ nav.pushState (write {}) (print routeCodec route)
     SwitchRoute ev page -> do
       H.liftEffect $ preventDefault ev
       H.raise (NavigateToRoute page)

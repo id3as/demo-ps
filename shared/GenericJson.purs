@@ -9,25 +9,25 @@ import Foreign as Foreign
 import Prim.Row as Row
 import Record (union)
 import Simple.JSON as JSON
-import Type.Prelude (class IsSymbol, SProxy(..), reflectSymbol)
+import Type.Prelude (class IsSymbol, Proxy(..), reflectSymbol)
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | Read implementation for simple-json for generic things
-taggedSumRep ::
-  forall a rep.
-  GR.Generic a rep =>
-  GenericTaggedSumRep rep =>
-  Foreign ->
-  Foreign.F a
+taggedSumRep
+  :: forall a rep
+   . GR.Generic a rep
+  => GenericTaggedSumRep rep
+  => Foreign
+  -> Foreign.F a
 taggedSumRep f = GR.to <$> genericTaggedSumRep f
 
 -- | Write implementation for simple-json for generic things
-writeTaggedSumRep ::
-  forall a rep.
-  GR.Generic a rep =>
-  GenericTaggedSumRep rep =>
-  a ->
-  Foreign
+writeTaggedSumRep
+  :: forall a rep
+   . GR.Generic a rep
+  => GenericTaggedSumRep rep
+  => a
+  -> Foreign
 writeTaggedSumRep f = writeGenericTaggedSumRep $ GR.from f
 
 -- | Generic Tagged Sum Representations, tagged with a "type" field
@@ -43,7 +43,7 @@ instance taggedSumRepSum ::
   genericTaggedSumRep f =
     GR.Inl <$> genericTaggedSumRep f
       <|> GR.Inr
-      <$> genericTaggedSumRep f
+        <$> genericTaggedSumRep f
   writeGenericTaggedSumRep f = case f of
     GR.Inl x -> writeGenericTaggedSumRep x
     GR.Inr x -> writeGenericTaggedSumRep x
@@ -66,7 +66,7 @@ instance taggedSumRepConstructorRecord ::
     else
       fail $ ForeignError $ "Wrong type tag " <> r."__type" <> " where " <> name <> " was expected."
     where
-    nameP = SProxy :: SProxy name
+    nameP = Proxy :: Proxy name
 
     name = reflectSymbol nameP
   writeGenericTaggedSumRep (GR.Constructor z :: GR.Constructor name _) =
@@ -77,12 +77,12 @@ instance taggedSumRepConstructorRecord ::
     in
       unsafeToForeign $ merged
     where
-    nameP = SProxy :: SProxy name
+    nameP = Proxy :: Proxy name
 
     name = reflectSymbol nameP
 else instance taggedSumRepNoArguments ::
   ( IsSymbol name
-    ) =>
+  ) =>
   GenericTaggedSumRep (GR.Constructor name GR.NoArguments) where
   genericTaggedSumRep f = do
     r :: String <- JSON.read' f
@@ -91,12 +91,12 @@ else instance taggedSumRepNoArguments ::
     else
       fail $ ForeignError $ "Unknown string tag " <> name
     where
-    nameP = SProxy :: SProxy name
+    nameP = Proxy :: Proxy name
 
     name = reflectSymbol nameP
   writeGenericTaggedSumRep (GR.Constructor z :: GR.Constructor name _) = JSON.write name
     where
-    nameP = SProxy :: SProxy name
+    nameP = Proxy :: Proxy name
 
     name = reflectSymbol nameP
 else instance taggedSumRepConstructor ::
@@ -111,12 +111,12 @@ else instance taggedSumRepConstructor ::
     else
       fail $ ForeignError $ "Wrong type tag " <> r."__type" <> " where " <> name <> " was expected."
     where
-    nameP = SProxy :: SProxy name
+    nameP = Proxy :: Proxy name
 
     name = reflectSymbol nameP
   writeGenericTaggedSumRep (GR.Constructor a) = unsafeToForeign $ { "__type": name, value: JSON.write $ writeGenericTaggedSumRep a }
     where
-    nameP = SProxy :: SProxy name
+    nameP = Proxy :: Proxy name
 
     name = reflectSymbol nameP
 

@@ -1,8 +1,13 @@
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.14.0-20210329/packages.dhall sha256:32c90bbcd8c1018126be586097f05266b391f6aea9125cf10fba2292cb2b8c73
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.2-20220624/packages.dhall
+        sha256:08989ed9f53e381f879f1b7012ad7684b1ed64d7164c4ad75e306d3210a46c92
 
-let overrides = {=}
-
-let additions = {=}
-
-in  upstream // overrides // additions
+in  upstream
+  with halogen-bootstrap4 =
+    { dependencies = 
+    [
+      "halogen"
+    ]
+    , repo = "https://github.com/mschristiansen/purescript-halogen-bootstrap4.git"
+    , version = "v0.2.0"
+    }

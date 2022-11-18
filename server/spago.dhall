@@ -10,6 +10,7 @@
   , "erl-atom"
   , "erl-binary"
   , "erl-cowboy"
+  , "erl-kernel"
   , "erl-lists"
   , "erl-logger"
   , "erl-maps"

@@ -10,7 +10,7 @@ import Prelude
 import BookLibrary as BookLibrary
 import Books (Book, Isbn, BookEvent)
 import Data.Either (Either(..), either)
-import Data.Maybe (Maybe(..), isJust, maybe)
+import Data.Maybe (Maybe(..), fromJust, isJust, maybe)
 import Effect (Effect)
 import Effect.Class (liftEffect)
 import Erl.Atom (atom)
@@ -20,14 +20,16 @@ import Erl.Cowboy.Req (ReadBodyResult(..), Req, readBody, setBody, streamBody, s
 import Erl.Data.Binary (Binary)
 import Erl.Data.Binary.IOData (IOData, fromBinary, toBinary)
 import Erl.Data.Binary.IOData as IOData
-import Erl.Data.List (List, nil, (:))
+import Erl.Data.List (List, nil, singleton, (:))
 import Erl.Data.Map as Map
-import Erl.Data.Tuple (Tuple2, tuple2, tuple4)
-import Erl.Process (Process(..), self, send)
+import Erl.Data.Tuple (Tuple2, tuple2)
+import Erl.Kernel.Inet (Port(..), ip4)
+import Erl.Process (self, send)
 import Erl.Process.Raw (getPid)
 import Logger as Logger
 import MonitorExample as MonitorExample
 import OneForOneSup as OneForOneSup
+import Partial.Unsafe (unsafePartial)
 import Pinto (RegistryName(..), StartLinkResult)
 import Pinto.GenServer (InitResult(..), ServerPid, ServerType)
 import Pinto.GenServer as GenServer
@@ -35,7 +37,7 @@ import Pinto.Monitor as Monitor
 import Routes as Routes
 import Simple.JSON (class WriteForeign, readJSON, writeJSON)
 import SimpleBus as SimpleBus
-import Stetson (Authorized(..), CowboyHandler(..), LoopCallResult(..), RestResult, StaticAssetLocation(..), StetsonHandler)
+import Stetson (AcceptHandlerResult, Authorized(..), CowboyHandler(..), LoopCallResult(..), RestResult, StaticAssetLocation(..), StetsonHandler, acceptFailure, acceptSuccess)
 import Stetson as Stetson
 import Stetson.Loop as Loop
 import Stetson.Rest as Rest
@@ -43,11 +45,9 @@ import Stetson.Types (routeHandler)
 import Stetson.WebSocket as WebSocket
 import Unsafe.Coerce (unsafeCoerce)
 
-newtype State
-  = State {}
+newtype State = State {}
 
-type BookWebStartArgs
-  = { webPort :: Int }
+type BookWebStartArgs = { webPort :: Int }
 
 serverName :: RegistryName (ServerType Unit Unit Unit State)
 serverName = Local $ atom "book_web"
@@ -66,25 +66,25 @@ init args = do
     $ Stetson.startClear "http_listener"
     $ Stetson.configure
         { routes =
-          Stetson.routes2
-            -- These routes are defined in a typed object
-            -- that dictate
-            -- a) What paths to reach them on
-            -- b) What arguments they expect (typed(!!))
-            -- So the callbacks to these names are typed and can be referred to in shared/Routes.purs
-            Routes.apiRoute
-            { "Book": book
-            , "Books": books
-            , "EventsWs": eventsWs
-            , "EventsFirehoseRest": eventsFirehoseRest
-            , "DataStream": dataStream
-            , "OneForOne": oneForOne
-            , "Assets": PrivDir "demo_ps" "www/assets"
-            , "Index": PrivFile "demo_ps" "www/index.html"
-            , "Index2": (\(_ :: String) -> PrivFile "demo_ps" "www/index.html")
-            }
-        , bindPort = args.webPort
-        , bindAddress = tuple4 0 0 0 0
+            Stetson.routes2
+              -- These routes are defined in a typed object
+              -- that dictate
+              -- a) What paths to reach them on
+              -- b) What arguments they expect (typed(!!))
+              -- So the callbacks to these names are typed and can be referred to in shared/Routes.purs
+              Routes.apiRoute
+              { "Book": book
+              , "Books": books
+              , "EventsWs": eventsWs
+              , "EventsFirehoseRest": eventsFirehoseRest
+              , "DataStream": dataStream
+              , "OneForOne": oneForOne
+              , "Assets": PrivDir "demo_ps" "www/assets"
+              , "Index": PrivFile "demo_ps" "www/index.html"
+              , "Index2": (\(_ :: String) -> PrivFile "demo_ps" "www/index.html")
+              }
+        , bindPort = (Port args.webPort)
+        , bindAddress = unsafePartial $ fromJust $ ip4 0 0 0 0
         }
   pure $ InitOk $ State {}
 
@@ -118,7 +118,7 @@ books =
     , serviceAvailable: \req state -> Rest.result true req state
     }
   where
-  acceptJson :: forall state. Req -> state -> Effect (RestResult Boolean state)
+  acceptJson :: forall state. Req -> state -> Effect (RestResult AcceptHandlerResult state)
   acceptJson req state = do
     -- Read the whole body, no buffering (how big can a book be??)
     body <- allBody req mempty
@@ -127,9 +127,9 @@ books =
     result <- either (pure <<< Left <<< show) BookLibrary.create $ readJSON $ unsafeCoerce body
     case result of
       -- The point being that Left -> Failure -> False -> Err as the body
-      Left err -> Rest.result false (setBody err req) state
+      Left err -> Rest.result acceptFailure (setBody err req) state
       -- And Right -> Success -> True and no body
-      Right c -> Rest.result true req state
+      Right c -> Rest.result acceptSuccess req state
 
 -- Another rest handler, this time of 'Maybe Book'
 -- This is because we take in an Isbn (Look at that!! It just works thanks to the router)
@@ -154,7 +154,7 @@ book id =
           void $ maybe (pure unit) (\book' -> BookLibrary.delete book'.isbn) state
           Rest.result true req state
     -- And the same trick as bove, sharing the jsonWriter for dumping the json out over the wire
-    , contentTypesAccepted: restHandler ((tuple2 "application/json" acceptJson) : nil)
+    , contentTypesAccepted: (Rest.result (singleton $ tuple2 "application/json" acceptJson))
     , contentTypesProvided: (\req state -> Rest.result (jsonWriter : nil) req state)
     }
   where
@@ -162,13 +162,12 @@ book id =
     body <- allBody req mempty
     result <- either (pure <<< Left <<< show) BookLibrary.update $ readJSON $ binaryToString body
     case result of
-      Left err -> Rest.result false (setBody err req) state
-      Right c -> Rest.result true req state
+      Left err -> Rest.result acceptFailure (setBody err req) state
+      Right c -> Rest.result acceptSuccess req state
 
 -- We don't need this message type, but
 -- We may as well define one as it means we can easily add more messages if we want to in the future
-data EventsWsMsg
-  = BookMsg BookEvent
+data EventsWsMsg = BookMsg BookEvent
 
 -- This is a receiving  handler, which receives the message  typr defined above, and holds a state of 'Unit'
 eventsWs :: StetsonHandler EventsWsMsg Unit
@@ -189,7 +188,7 @@ eventsWs =
     -- Get our pid
     self <- self
     -- Subscribe to the bus, and redirect the events into our emitter after wrapping them in our type
-    void $ liftEffect $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
+    void $ SimpleBus.subscribe BookLibrary.bus BookMsg
     pure $ Stetson.NoReply s
 
   -- Receives 'Frame' sent from client (text,ping,binary,etc)
@@ -224,7 +223,7 @@ eventsFirehoseRest =
     -- In this case, we'll subscribe to the bus and throw any messages it sends us
     -- into Book Msg
     -- We do need to lift the effect into our StateT tho
-    void $ liftEffect $ SimpleBus.subscribe BookLibrary.bus $ BookMsg >>> send self
+    void $ SimpleBus.subscribe BookLibrary.bus BookMsg
     pure state
 
   -- And then those messages will appear here so we can
@@ -254,7 +253,7 @@ data DataStreamMessage
 dataStream :: StetsonHandler DataStreamMessage Unit
 dataStream =
   routeHandler
-  { init
+    { init
     , loopInit: loopInit
     , loopInfo: loopInfo
     }
@@ -273,15 +272,15 @@ dataStream =
     -- We'll register our emitter with the gen server
     -- It can then send us messages
     void $ liftEffect $ MonitorExample.registerClient $ send self <<< Data
- 
+
     maybePid <- liftEffect $ GenServer.whereIs (MonitorExample.serverName)
 
     case maybePid of
       Just pid -> do
         -- But we'll also add a monitor to that gen server so we know if it dies
         -- There are two messages here, we could just use the same one but I want the example to be clear
-          void $ liftEffect $ Monitor.monitor pid (\_ -> send self DataSourceDied)
-          pure unit 
+        void $ liftEffect $ Monitor.monitorTo pid self (const DataSourceDied)
+        pure unit
       _ -> do
         liftEffect $ send self DataSourceAlreadyDown
         pure unit
@@ -301,8 +300,7 @@ dataStream =
         -- and here too
         pure $ LoopStop req state
 
-data OneForOneMessage
-  = OfOData Binary
+data OneForOneMessage = OfOData Binary
 
 oneForOne :: StetsonHandler OneForOneMessage Unit
 oneForOne =
@@ -319,7 +317,7 @@ oneForOne =
   where
   loopInit req state = do
     -- Get our typed pid
-    self  <- self
+    self <- self
     -- We'll register our emitter with the gen server
     -- It can then send us messages
     void $ liftEffect $ OneForOneSup.startClient { handler: send self <<< OfOData, clientPid: getPid self }

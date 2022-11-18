@@ -2,7 +2,7 @@ module Routes where
 
 import Prelude hiding ((/))
 import Data.Either (Either(..))
-import Data.Generic.Rep (class Generic, NoArguments(..), Product(..))
+import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Routing.Duplex (RouteDuplex', as, path, rest, segment)

@@ -1,7 +1,7 @@
 module BookClient.Books.Create where
 
 import Prelude
-import Affjax as AX
+import Affjax.Web as AX
 import Affjax.RequestBody (string) as AXRequest
 import Affjax.RequestHeader (RequestHeader(..))
 import Affjax.ResponseFormat as AXResponse
@@ -35,20 +35,15 @@ data Action
   | SaveNewBook Event
   | BackToListView Event
 
-type Slot
-  = H.Slot Query GlobalMessage
+type Slot = H.Slot Query GlobalMessage
 
-type Model
-  = { message :: StatusMessage, posting :: Boolean, book :: Book, validation :: ValidationMap }
+type Model = { message :: StatusMessage, posting :: Boolean, book :: Book, validation :: ValidationMap }
 
-type BooksInput
-  = Unit
+type BooksInput = Unit
 
-type ActionHandler
-  = H.HalogenM Model Action () GlobalMessage Aff Unit
+type ActionHandler = H.HalogenM Model Action () GlobalMessage Aff Unit
 
-type RenderHandler
-  = H.ComponentHTML Action () Aff
+type RenderHandler = H.ComponentHTML Action () Aff
 
 component :: H.Component Query BooksInput GlobalMessage Aff
 component =
@@ -72,17 +67,17 @@ component =
       , HH.div []
           [ HH.div [ HP.class_ B.formGroup ]
               [ HH.label [ HP.for "isbn" ] [ HH.text "Isbn" ]
-              , HH.input [ HP.class_ B.formControl, HP.id_ "isbn", HP.value $ unwrap book.isbn, HE.onValueInput (IsbnChanged) ]
+              , HH.input [ HP.class_ B.formControl, HP.id "isbn", HP.value $ unwrap book.isbn, HE.onValueInput (IsbnChanged) ]
               , validationFor validation "isbn" "This is the registered ISBN of the book"
               ]
           , HH.div [ HP.class_ B.formGroup ]
               [ HH.label [ HP.for "title" ] [ HH.text "Title" ]
-              , HH.input [ HP.class_ B.formControl, HP.id_ "title", HP.value $ book.title, HE.onValueInput (TitleChanged) ]
+              , HH.input [ HP.class_ B.formControl, HP.id "title", HP.value $ book.title, HE.onValueInput (TitleChanged) ]
               , validationFor validation "title" "I think this is self-explanatory no?"
               ]
           , HH.div [ HP.class_ B.formGroup ]
               [ HH.label [ HP.for "author" ] [ HH.text "Author" ]
-              , HH.input [ HP.class_ B.formControl, HP.id_ "author", HP.value $ book.author, HE.onValueInput (AuthorChanged) ]
+              , HH.input [ HP.class_ B.formControl, HP.id "author", HP.value $ book.author, HE.onValueInput (AuthorChanged) ]
               , validationFor validation "author" "As is this"
               ]
           , if not posting then
@@ -129,7 +124,8 @@ saveBook = do
   _ <- H.put state { posting = true }
   response <-
     H.liftAff $ AX.request
-      $ ( AX.defaultRequest
+      $
+        ( AX.defaultRequest
             { url = "/api/books"
             , method = Left POST
             , headers = [ ContentType $ MediaType "application/json" ]
